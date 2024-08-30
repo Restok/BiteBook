@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>821981356816-pi66035tppu2j2u7je1uih1sjhk66uje.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.821981356816-pi66035tppu2j2u7je1uih1sjhk66uje</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>821981356816-22m27acvtn2dlfvekrffinobdg3qb926.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyD7-BlXttAdv8rsnQHeHepzxj9HYLf3Epw</string>
+	<key>GCM_SENDER_ID</key>
+	<string>821981356816</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.pookie.loveyumdiary</string>
+	<key>PROJECT_ID</key>
+	<string>yum-yum-347a3</string>
+	<key>STORAGE_BUCKET</key>
+	<string>yum-yum-347a3.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:821981356816:ios:8790ddeff48500223e7b95</string>
+</dict>
+</plist>
