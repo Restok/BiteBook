@@ -24,7 +24,7 @@ export default {
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pookie.loveyumdiary",
-      "googleServicesFile": process.env.GOOGLE_SERVICES_INFOPLIST
+      "googleServicesFile": process.env.GOOGLE_SERVICES_INFOPLIST || "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -32,7 +32,7 @@ export default {
         "backgroundColor": "#ffffff"
       },
       "package": "com.pookie.loveyumdiary",
-      "googleServicesFile": process.env.GOOGLE_SERVICES_JSON
+      "googleServicesFile": process.env.GOOGLE_SERVICES_JSON || "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png",
