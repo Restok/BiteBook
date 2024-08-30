@@ -8,6 +8,7 @@ node_modules/
 dist/
 web-build/
 
+
 # Native
 *.orig.*
 *.jks
@@ -33,3 +34,6 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+/android
+/ios
