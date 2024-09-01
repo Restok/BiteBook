@@ -3,6 +3,7 @@ import { View, StyleSheet } from "react-native";
 import { Text, Button, Colors } from "react-native-ui-lib";
 import VerticalTimeline from "../components/VerticalTimeline";
 import GroupPicker from "../components/GroupPicker";
+import CreatePostModal from "../components/post/CreatePostModal";
 
 const HomeScreen: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState({
@@ -17,8 +18,24 @@ const HomeScreen: React.FC = () => {
     weekday: "short",
   });
 
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
   const handleAddPost = () => {
-    console.log("Add post button pressed");
+    setIsModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalVisible(false);
+  };
+
+  const handleSubmitPost = (post: {
+    images: string[];
+    title: string;
+    type: string;
+  }) => {
+    // Handle the new post submission here
+    console.log("New post:", post);
+    // You can add the new post to your data source or send it to an API
   };
 
   return (
@@ -30,6 +47,11 @@ const HomeScreen: React.FC = () => {
         </Text>
         <VerticalTimeline />
       </View>
+      <CreatePostModal
+        visible={isModalVisible}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmitPost}
+      />
       <Button
         text40R
         label="+"

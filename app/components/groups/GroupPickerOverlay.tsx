@@ -54,17 +54,14 @@ const GroupPickerOverlay: React.FC<GroupPickerOverlayProps> = ({
   };
 
   const handleStartNewJournal = () => {
-    setExpandBitebookVisible(false);
     setCreateJournalVisible(true);
   };
   const handleCreateJournal = (name: string, image: string) => {
     // TODO: Implement create journal logic
-    console.log("Create journal", name, image);
     setCreateJournalVisible(false);
   };
   const handleJoinExistingJournal = () => {
     // TODO: Implement join existing journal logic
-    console.log("Join existing journal");
   };
 
   return (

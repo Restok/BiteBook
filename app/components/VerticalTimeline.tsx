@@ -15,7 +15,7 @@ interface TimelineEntry {
   title: string;
 }
 
-const HOUR_HEIGHT = 100;
+const HOUR_HEIGHT = 120;
 const INITIAL_HOURS_SHOWN = 12;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const LINE_LEFT_MARGIN = Math.max(SCREEN_WIDTH * 0.2, 80);
@@ -32,9 +32,7 @@ const VerticalTimeline: React.FC = () => {
   const scrollOffset = useRef(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [scrollViewHeight, setScrollViewHeight] = useState(600);
-  const [totalHoursLoaded, setTotalHoursLoaded] = useState(
-    currentTime.getHours()
-  );
+  const [totalHoursLoaded, setTotalHoursLoaded] = useState(24);
   const [contentHeight, setContentHeight] = useState(
     totalHoursLoaded * HOUR_HEIGHT * zoomLevel
   );
@@ -43,18 +41,19 @@ const VerticalTimeline: React.FC = () => {
 
   const onScrollViewLayout = (event) => {
     const { height } = event.nativeEvent.layout;
+    console.log(height);
     setScrollViewHeight(height);
   };
   useEffect(() => {
     const now = new Date();
     setCurrentTime(now);
-    fetchEntries(now, INITIAL_HOURS_SHOWN);
+    fetchEntries(now);
     const intervalId = setInterval(() => {
       const cur = new Date();
       if (cur.getMinutes() !== currentTime.getMinutes()) {
         // If the minute has changed, update the currentTime and refetch entries
         setCurrentTime(cur);
-        fetchEntries(cur, visibleHours);
+        fetchEntries(cur);
         if (cur.getHours() !== currentTime.getHours()) {
           // If the hour has changed, update the total hours loaded
           setTotalHoursLoaded(currentTime.getHours());
@@ -67,11 +66,10 @@ const VerticalTimeline: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    setZoomLevel(scrollViewHeight / (INITIAL_HOURS_SHOWN * HOUR_HEIGHT));
     setContentHeight(totalHoursLoaded * HOUR_HEIGHT * zoomLevel);
-  }, [scrollViewHeight]);
+  }, [scrollViewHeight, totalHoursLoaded]);
 
-  const fetchEntries = async (endDate: Date, hours: number) => {
+  const fetchEntries = async (endDate: Date) => {
     setIsLoading(true);
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -113,7 +111,6 @@ const VerticalTimeline: React.FC = () => {
         (currentTime.getTime() - markerTime.getTime()) / (1000 * 60 * 60);
       const yPosition = hoursDiff * HOUR_HEIGHT * zoomLevel;
 
-      // Skip markers that are too close to the current time
       let isCloseToCurrentTime = false;
       if (i == totalHoursLoaded - intervalHours) {
         isCloseToCurrentTime = Math.abs(hoursDiff) < intervalHours / 2;
@@ -133,7 +130,6 @@ const VerticalTimeline: React.FC = () => {
       }
     }
 
-    // Add current time marker
     markers.push(
       <View key="current" style={[styles.timeMarker, { top: 0 }]}>
         <Text style={styles.timeMarkerText}>
@@ -150,13 +146,13 @@ const VerticalTimeline: React.FC = () => {
 
   const getIntervalHours = () => {
     if (visibleHours >= 12) {
-      return 6; // 6-hour intervals
+      return 6;
     } else if (visibleHours >= 6) {
-      return 3; // 3-hour intervals
+      return 3;
     } else if (visibleHours >= 3) {
-      return 1; // 1-hour intervals
+      return 1;
     } else {
-      return 0.5; // 30-minute intervals
+      return 0.5;
     }
   };
 
