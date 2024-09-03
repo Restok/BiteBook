@@ -20,7 +20,6 @@ export default {
       "@react-native-firebase/crashlytics",
       "expo-router",
       "expo-image-picker",
-      "@react-native-community/datetimepicker",
     ],
     ios: {
       supportsTablet: true,

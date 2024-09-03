@@ -9,11 +9,12 @@ import {
 } from "react-native";
 import { Text, Colors, Button } from "react-native-ui-lib";
 import * as ImagePicker from "expo-image-picker";
+import { createJournal } from "../../services/createJournal";
 
 interface CreateJournalOverlayProps {
   visible: boolean;
   onClose: () => void;
-  onCreateJournal: (name: string, image: string) => void;
+  onCreateJournal: (journal) => void;
 }
 
 const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
@@ -23,6 +24,8 @@ const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
 }) => {
   const [journalName, setJournalName] = useState("");
   const [journalImage, setJournalImage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleImagePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -37,9 +40,23 @@ const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
     }
   };
 
-  const handleCreateJournal = () => {
+  const handleCreateJournal = async () => {
     if (journalName.trim() && journalImage) {
-      onCreateJournal(journalName.trim(), journalImage);
+      setIsLoading(true);
+      setError(null);
+      try {
+        const newJournal = await createJournal(
+          journalName.trim(),
+          journalImage
+        );
+        onCreateJournal(newJournal);
+        onClose();
+      } catch (err) {
+        setError("Failed to create journal. Please try again.");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -79,11 +96,11 @@ const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
           onChangeText={setJournalName}
         />
         <Button
-          label="Create Journal"
+          label={isLoading ? "Creating..." : "Create Journal"}
           style={styles.createButton}
           backgroundColor={Colors.purple30}
           onPress={handleCreateJournal}
-          disabled={!journalName.trim() || !journalImage}
+          disabled={!journalName.trim() || !journalImage || isLoading}
         />
       </View>
     </Modal>

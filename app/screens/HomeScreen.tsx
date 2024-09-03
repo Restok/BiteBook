@@ -4,13 +4,21 @@ import { Text, Button, Colors } from "react-native-ui-lib";
 import VerticalTimeline from "../components/VerticalTimeline";
 import GroupPicker from "../components/GroupPicker";
 import CreatePostModal from "../components/post/CreatePostModal";
+import ExpandedPostOverlay from "../components/post/ExpandedPostOverlay";
 
 const HomeScreen: React.FC = () => {
-  const [selectedGroup, setSelectedGroup] = useState({
+  const [selectedJournal, setSelectedJournal] = useState({
     id: "user",
     name: "You",
     icon: "👤",
   });
+
+  const [journals, setJournals] = useState([
+    { id: "user", name: "You", icon: "👤" },
+    { id: "group1", name: "Family", icon: "👨‍👩‍👧‍👦" },
+    { id: "group2", name: "Friends", icon: "👥" },
+    // Add more journals as needed
+  ]);
 
   const currentDate = new Date().toLocaleDateString("en-US", {
     month: "short",
@@ -19,6 +27,8 @@ const HomeScreen: React.FC = () => {
   });
 
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isOverlayVisible, setOverlayVisible] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
 
   const handleAddPost = () => {
     setIsModalVisible(true);
@@ -33,24 +43,29 @@ const HomeScreen: React.FC = () => {
     title: string;
     type: string;
   }) => {
-    // Handle the new post submission here
     console.log("New post:", post);
-    // You can add the new post to your data source or send it to an API
+  };
+
+  const handleEntryPress = (post) => {
+    setSelectedPost(post);
+    setOverlayVisible(true);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.listContainer}>
-        <GroupPicker onGroupSelect={setSelectedGroup} />
+        <GroupPicker onGroupSelect={setSelectedJournal} />
         <Text text30BL style={styles.dateText}>
           {currentDate}
         </Text>
-        <VerticalTimeline />
+        <VerticalTimeline onEntryPress={handleEntryPress} />
       </View>
       <CreatePostModal
         visible={isModalVisible}
         onClose={handleCloseModal}
         onSubmit={handleSubmitPost}
+        journals={journals}
+        currentJournal={selectedJournal}
       />
       <Button
         text40R
@@ -60,6 +75,11 @@ const HomeScreen: React.FC = () => {
         style={styles.addButton}
         round
         onPress={handleAddPost}
+      />
+      <ExpandedPostOverlay
+        visible={isOverlayVisible}
+        onClose={() => setOverlayVisible(false)}
+        // post={selectedPost}
       />
     </View>
   );
@@ -71,7 +91,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   listContainer: {
-    paddingTop: 50,
+    paddingTop: 15,
     flex: 1,
   },
   dateText: {

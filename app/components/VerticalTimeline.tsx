@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, ScrollView, Image, Dimensions } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Image,
+  Dimensions,
+  TouchableOpacity,
+} from "react-native";
 import { Text } from "react-native-ui-lib";
 import {
   PinchGestureHandler,
@@ -16,13 +23,19 @@ interface TimelineEntry {
 }
 
 const HOUR_HEIGHT = 120;
-const INITIAL_HOURS_SHOWN = 12;
+const INITIAL_HOURS_SHOWN = 8;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const LINE_LEFT_MARGIN = Math.max(SCREEN_WIDTH * 0.2, 80);
 
-const VerticalTimeline: React.FC = () => {
+type VerticalTimelineProps = {
+  onEntryPress: (entry: TimelineEntry) => void;
+};
+
+const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
+  onEntryPress,
+}) => {
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(0.5);
   const [visibleHours, setVisibleHours] = useState(INITIAL_HOURS_SHOWN);
   const scrollViewRef = useRef<ScrollView>(null);
   const pinchRef = useRef(null);
@@ -32,7 +45,9 @@ const VerticalTimeline: React.FC = () => {
   const scrollOffset = useRef(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [scrollViewHeight, setScrollViewHeight] = useState(600);
-  const [totalHoursLoaded, setTotalHoursLoaded] = useState(24);
+  const [totalHoursLoaded, setTotalHoursLoaded] = useState(
+    new Date().getHours()
+  );
   const [contentHeight, setContentHeight] = useState(
     totalHoursLoaded * HOUR_HEIGHT * zoomLevel
   );
@@ -41,24 +56,25 @@ const VerticalTimeline: React.FC = () => {
 
   const onScrollViewLayout = (event) => {
     const { height } = event.nativeEvent.layout;
-    console.log(height);
     setScrollViewHeight(height);
   };
   useEffect(() => {
     const now = new Date();
     setCurrentTime(now);
     fetchEntries(now);
+
     const intervalId = setInterval(() => {
       const cur = new Date();
-      if (cur.getMinutes() !== currentTime.getMinutes()) {
-        // If the minute has changed, update the currentTime and refetch entries
-        setCurrentTime(cur);
-        fetchEntries(cur);
-        if (cur.getHours() !== currentTime.getHours()) {
-          // If the hour has changed, update the total hours loaded
-          setTotalHoursLoaded(currentTime.getHours());
+      setCurrentTime((prevTime) => {
+        if (cur.getMinutes() !== prevTime.getMinutes()) {
+          fetchEntries(cur);
+          if (cur.getHours() !== prevTime.getHours()) {
+            setTotalHoursLoaded(cur.getHours());
+          }
+          return cur;
         }
-      }
+        return prevTime;
+      });
     }, 1000);
 
     // Clean up the interval on component unmount
@@ -103,7 +119,6 @@ const VerticalTimeline: React.FC = () => {
   const renderTimeMarkers = () => {
     const markers = [];
     const intervalHours = getIntervalHours();
-
     for (let i = 0; i < totalHoursLoaded; i += intervalHours) {
       const markerTime = hourToDate(i);
 
@@ -111,12 +126,8 @@ const VerticalTimeline: React.FC = () => {
         (currentTime.getTime() - markerTime.getTime()) / (1000 * 60 * 60);
       const yPosition = hoursDiff * HOUR_HEIGHT * zoomLevel;
 
-      let isCloseToCurrentTime = false;
-      if (i == totalHoursLoaded - intervalHours) {
-        isCloseToCurrentTime = Math.abs(hoursDiff) < intervalHours / 2;
-      }
-
-      if (i != 0 || !isCloseToCurrentTime) {
+      const isCloseToCurrentTime = Math.abs(hoursDiff) < intervalHours / 2;
+      if (!isCloseToCurrentTime) {
         markers.push(
           <View key={i} style={[styles.timeMarker, { top: yPosition }]}>
             <Text style={styles.timeMarkerText}>
@@ -158,15 +169,19 @@ const VerticalTimeline: React.FC = () => {
 
   const renderEntries = () => {
     return entries.map((entry) => (
-      <View
-        key={entry.id}
-        style={[styles.entry, { top: getEntryPosition(entry.timestamp) }]}
-      >
-        <View style={styles.entryDot} />
-        <View style={styles.entryLine} />
-        <View style={styles.entryContent}>
-          <Image source={{ uri: entry.imageUrl }} style={styles.entryImage} />
-          <Text style={styles.entryTitle}>{entry.title}</Text>
+      <View key={entry.id}>
+        <View
+          style={[styles.entry, { top: getEntryPosition(entry.timestamp) }]}
+        >
+          <View style={styles.entryDot} />
+          <View style={styles.entryLine} />
+          <TouchableOpacity
+            style={styles.entryContent}
+            onPress={() => onEntryPress(entry)}
+          >
+            <Image source={{ uri: entry.imageUrl }} style={styles.entryImage} />
+            <Text style={styles.entryTitle}>{entry.title}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     ));
@@ -233,6 +248,7 @@ const VerticalTimeline: React.FC = () => {
           ref={scrollViewRef}
           style={styles.container}
           onScroll={onScroll}
+          keyboardShouldPersistTaps={"always"}
           scrollEventThrottle={400}
           onLayout={onScrollViewLayout}
         >

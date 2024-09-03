@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   StyleSheet,
@@ -7,27 +7,41 @@ import {
   TextInput,
   Image,
   ScrollView,
+  Platform,
 } from "react-native";
 import { Text, Colors, Button, Picker } from "react-native-ui-lib";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import JournalSelectionModal from "./JournalSelectionModal";
 
 interface CreatePostModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (post: { images: string[]; title: string; type: string }) => void;
+  onSubmit: (post: {
+    images: string[];
+    title: string;
+    type: string;
+    time: Date;
+    journals: string[];
+  }) => void;
+  journals: { id: string; name: string; icon: string }[];
+  currentJournal: { id: string; name: string; icon: string };
 }
 
 const CreatePostModal: React.FC<CreatePostModalProps> = ({
   visible,
   onClose,
   onSubmit,
+  journals,
+  currentJournal,
 }) => {
   const [images, setImages] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [type, setType] = useState("Meal");
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showJournalSelection, setShowJournalSelection] = useState(false);
+  const [selectedJournals, setSelectedJournals] = useState<string[]>([]);
 
   const handleImagePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -44,17 +58,32 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const handleRemoveImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
   };
-
-  const handleSubmit = () => {
-    if (title.trim() && images.length > 0) {
-      onSubmit({ images, title: title.trim(), type, time });
-      setImages([]);
-      setTitle("");
-      setType("Meal");
-      setTime(new Date());
-      onClose();
+  const handleTimeChange = (event: any, selectedTime: Date | undefined) => {
+    setShowTimePicker(Platform.OS === "ios");
+    if (selectedTime) {
+      setTime(selectedTime);
     }
   };
+  const handleSubmit = () => {
+    if (title.trim() && images.length > 0) {
+      setShowJournalSelection(true);
+    }
+  };
+  const handleJournalSelectionSubmit = (journals: string[]) => {
+    setSelectedJournals(journals);
+    onSubmit({ images, title: title.trim(), type, time, journals });
+    setImages([]);
+    setTitle("");
+    setType("Meal");
+    setTime(new Date());
+    setSelectedJournals([]);
+    onClose();
+  };
+  useEffect(() => {
+    if (visible) {
+      setTime(new Date());
+    }
+  }, [visible]);
   return (
     <Modal
       animationType="slide"
@@ -100,7 +129,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
             <DateTimePicker
               value={time}
               mode="time"
-              is24Hour={true}
+              // is24Hour={true}
               display="default"
               onChange={handleTimeChange}
             />
@@ -151,6 +180,13 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
           />
         </View>
       </View>
+      <JournalSelectionModal
+        visible={showJournalSelection}
+        onClose={() => setShowJournalSelection(false)}
+        onSubmit={handleJournalSelectionSubmit}
+        journals={journals}
+        currentJournalId={currentJournal.id}
+      />
     </Modal>
   );
 };

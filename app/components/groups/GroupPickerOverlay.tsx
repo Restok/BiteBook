@@ -56,7 +56,7 @@ const GroupPickerOverlay: React.FC<GroupPickerOverlayProps> = ({
   const handleStartNewJournal = () => {
     setCreateJournalVisible(true);
   };
-  const handleCreateJournal = (name: string, image: string) => {
+  const handleCreateJournal = (journal) => {
     // TODO: Implement create journal logic
     setCreateJournalVisible(false);
   };
