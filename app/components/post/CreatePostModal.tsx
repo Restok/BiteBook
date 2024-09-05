@@ -13,27 +13,19 @@ import { Text, Colors, Button, Picker } from "react-native-ui-lib";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import JournalSelectionModal from "./JournalSelectionModal";
+import { createEntry } from "../../services/createEntry";
+import { Entry } from "../../types/entry";
 
 interface CreatePostModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (post: {
-    images: string[];
-    title: string;
-    type: string;
-    time: Date;
-    journals: string[];
-  }) => void;
-  journals: { id: string; name: string; icon: string }[];
-  currentJournal: { id: string; name: string; icon: string };
+  onSubmit: () => void;
 }
 
 const CreatePostModal: React.FC<CreatePostModalProps> = ({
   visible,
   onClose,
   onSubmit,
-  journals,
-  currentJournal,
 }) => {
   const [images, setImages] = useState<string[]>([]);
   const [title, setTitle] = useState("");
@@ -42,6 +34,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showJournalSelection, setShowJournalSelection] = useState(false);
   const [selectedJournals, setSelectedJournals] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleImagePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -69,15 +62,29 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
       setShowJournalSelection(true);
     }
   };
-  const handleJournalSelectionSubmit = (journals: string[]) => {
-    setSelectedJournals(journals);
-    onSubmit({ images, title: title.trim(), type, time, journals });
-    setImages([]);
-    setTitle("");
-    setType("Meal");
-    setTime(new Date());
-    setSelectedJournals([]);
-    onClose();
+  const handleJournalSelectionSubmit = async (selectedJournals: string[]) => {
+    setIsSubmitting(true);
+    try {
+      const entryId = await createEntry({
+        images,
+        title: title.trim(),
+        type,
+        time,
+        journals: selectedJournals,
+      });
+      onSubmit();
+      setImages([]);
+      setTitle("");
+      setType("Meal");
+      setTime(new Date());
+      setSelectedJournals([]);
+      onClose();
+    } catch (error) {
+      console.error("Error creating entry:", error);
+      // Handle error (e.g., show an error message to the user)
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   useEffect(() => {
     if (visible) {
@@ -176,7 +183,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
             style={styles.postButton}
             backgroundColor={Colors.purple30}
             onPress={handleSubmit}
-            disabled={!title.trim() || images.length === 0}
+            disabled={!title.trim() || images.length === 0 || isSubmitting}
           />
         </View>
       </View>
@@ -184,8 +191,6 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
         visible={showJournalSelection}
         onClose={() => setShowJournalSelection(false)}
         onSubmit={handleJournalSelectionSubmit}
-        journals={journals}
-        currentJournalId={currentJournal.id}
       />
     </Modal>
   );

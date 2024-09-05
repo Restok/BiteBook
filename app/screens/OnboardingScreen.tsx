@@ -50,7 +50,13 @@ const OnboardingScreen: React.FC<{ onComplete: () => void }> = ({
       });
 
       await user.updateProfile({ displayName: name, photoURL });
-      onComplete();
+
+      try {
+        await createJournal(`Your Journal`, photoURL, true);
+        onComplete();
+      } catch (error) {
+        console.error("Failed to create personal journal:", error);
+      }
     }
   };
 

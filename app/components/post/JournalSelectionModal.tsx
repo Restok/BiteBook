@@ -6,33 +6,30 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
-import { Text, Colors, Checkbox, Button } from "react-native-ui-lib";
-
-interface Journal {
-  id: string;
-  name: string;
-  icon: string;
-}
+import { Text, Colors, Checkbox, Button, Avatar } from "react-native-ui-lib";
+import { useJournalContext } from "../../contexts/JournalContext";
+import auth from "@react-native-firebase/auth";
 
 interface JournalSelectionModalProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (selectedJournals: string[]) => void;
-  journals: Journal[];
-  currentJournalId: string;
 }
 
 const JournalSelectionModal: React.FC<JournalSelectionModalProps> = ({
   visible,
   onClose,
   onSubmit,
-  journals,
-  currentJournalId,
 }) => {
   const [selectedJournals, setSelectedJournals] = useState<string[]>([]);
+  const { journals, selectedJournal } = useJournalContext();
+  const currentJournalId = selectedJournal?.id;
+
   useEffect(() => {
     if (visible) {
-      const userJournal = journals.find((j) => j.id === "user");
+      const userJournal = journals.find(
+        (j) => j.id === auth().currentUser?.uid
+      );
       const initialSelected = [userJournal?.id, currentJournalId].filter(
         Boolean
       ) as string[];
@@ -75,7 +72,7 @@ const JournalSelectionModal: React.FC<JournalSelectionModalProps> = ({
               style={styles.journalItem}
               onPress={() => toggleJournal(journal.id)}
             >
-              <Text style={styles.journalIcon}>{journal.icon}</Text>
+              <Avatar source={{ uri: journal.icon }} />
               <Text style={styles.journalName}>{journal.name}</Text>
               <Checkbox
                 value={selectedJournals.includes(journal.id)}
@@ -132,6 +129,7 @@ const styles = StyleSheet.create({
   journalName: {
     flex: 1,
     fontSize: 16,
+    marginLeft: 10,
   },
   buttonContainer: {
     flexDirection: "row",

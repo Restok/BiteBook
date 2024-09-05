@@ -9,59 +9,37 @@ import {
 import { Text, Avatar, Colors, Button } from "react-native-ui-lib";
 import ExpandBitebookOverlay from "./ExpandBitebookOverlay";
 import CreateJournalOverlay from "./CreateJournalOverlay";
-
-interface Group {
-  id: string;
-  name: string;
-  icon: string;
-}
-
-const groups: Group[] = [
-  { id: "user", name: "You", icon: "👤" },
-  { id: "paleo", name: "paleo diet gang", icon: "🥩" },
-  { id: "uni", name: "uni squad", icon: "🎓" },
-];
+import { Journal } from "../../types/journal";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { RootStackParamList } from "../../types/navigation";
 
 interface GroupPickerOverlayProps {
   visible: boolean;
   onClose: () => void;
-  onGroupSelect: (group: Group) => void;
+  onJournalSelect: (journal: Journal) => void;
+  journals: Journal[];
 }
 
 const GroupPickerOverlay: React.FC<GroupPickerOverlayProps> = ({
   visible,
   onClose,
-  onGroupSelect,
+  onJournalSelect,
+  journals,
 }) => {
-  const [expandBitebookVisible, setExpandBitebookVisible] = useState(false);
-  const [createJournalVisible, setCreateJournalVisible] = useState(false);
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
-  const renderGroupItem = ({ item }: { item: Group }) => (
+  const renderGroupItem = ({ item }: { item: Journal }) => (
     <TouchableOpacity
       style={styles.groupItem}
-      onPress={() => onGroupSelect(item)}
+      onPress={() => onJournalSelect(item)}
     >
-      <Avatar size={40} label={item.icon} />
+      <Avatar size={40} source={{ uri: item.icon }} />
       <Text style={styles.groupName}>{item.name}</Text>
     </TouchableOpacity>
   );
   const handleCreateOrJoinPress = () => {
-    setExpandBitebookVisible(true);
-  };
-
-  const handleExpandBitebookClose = () => {
-    setExpandBitebookVisible(false);
-  };
-
-  const handleStartNewJournal = () => {
-    setCreateJournalVisible(true);
-  };
-  const handleCreateJournal = (journal) => {
-    // TODO: Implement create journal logic
-    setCreateJournalVisible(false);
-  };
-  const handleJoinExistingJournal = () => {
-    // TODO: Implement join existing journal logic
+    navigation.navigate("ExpandBitebook");
   };
 
   return (
@@ -77,7 +55,7 @@ const GroupPickerOverlay: React.FC<GroupPickerOverlayProps> = ({
         </TouchableOpacity>
         <Text style={styles.title}>Select Group</Text>
         <FlatList
-          data={groups}
+          data={journals}
           renderItem={renderGroupItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.groupList}
@@ -89,17 +67,6 @@ const GroupPickerOverlay: React.FC<GroupPickerOverlayProps> = ({
           onPress={handleCreateOrJoinPress}
         />
       </View>
-      <ExpandBitebookOverlay
-        visible={expandBitebookVisible}
-        onClose={handleExpandBitebookClose}
-        onStartNewJournal={handleStartNewJournal}
-        onJoinExistingJournal={handleJoinExistingJournal}
-      />
-      <CreateJournalOverlay
-        visible={createJournalVisible}
-        onClose={() => setCreateJournalVisible(false)}
-        onCreateJournal={handleCreateJournal}
-      />
     </Modal>
   );
 };

@@ -12,18 +12,17 @@ import * as ImagePicker from "expo-image-picker";
 import { createJournal } from "../../services/createJournal";
 
 interface CreateJournalOverlayProps {
-  visible: boolean;
   onClose: () => void;
   onCreateJournal: (journal) => void;
 }
 
 const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
-  visible,
   onClose,
   onCreateJournal,
 }) => {
   const [journalName, setJournalName] = useState("");
   const [journalImage, setJournalImage] = useState("");
+  const [newJournal, setNewJournal] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,66 +43,45 @@ const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
     if (journalName.trim() && journalImage) {
       setIsLoading(true);
       setError(null);
-      try {
-        const newJournal = await createJournal(
-          journalName.trim(),
-          journalImage
-        );
-        onCreateJournal(newJournal);
-        onClose();
-      } catch (err) {
-        setError("Failed to create journal. Please try again.");
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
+      const journal = await createJournal(journalName.trim(), journalImage);
+      onCreateJournal(journal);
     }
   };
 
   return (
-    <Modal
-      animationType="slide"
-      transparent={false}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        <TouchableOpacity style={styles.backButton} onPress={onClose}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Create your new journal</Text>
-        <Text style={styles.subtitle}>
-          Share what you've been eating to each other. Set group goals and keep
-          each other accountable
-        </Text>
-        <TouchableOpacity
-          style={styles.imageContainer}
-          onPress={handleImagePick}
-        >
-          {journalImage ? (
-            <Image source={{ uri: journalImage }} style={styles.journalImage} />
-          ) : (
-            <View style={styles.imagePlaceholder}>
-              <Text style={styles.imagePlaceholderText}>🖼️</Text>
-              <Text style={styles.uploadText}>Upload</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        <TextInput
-          style={styles.input}
-          placeholder="Journal Name"
-          value={journalName}
-          onChangeText={setJournalName}
-        />
-        <Button
-          label={isLoading ? "Creating..." : "Create Journal"}
-          style={styles.createButton}
-          backgroundColor={Colors.purple30}
-          onPress={handleCreateJournal}
-          disabled={!journalName.trim() || !journalImage || isLoading}
-        />
-      </View>
-    </Modal>
+    <View style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={onClose}>
+        <Text style={styles.backButtonText}>←</Text>
+      </TouchableOpacity>
+      <Text style={styles.title}>Create your new journal</Text>
+      <Text style={styles.subtitle}>
+        Share what you've been eating to each other. Set group goals and keep
+        each other accountable
+      </Text>
+      <TouchableOpacity style={styles.imageContainer} onPress={handleImagePick}>
+        {journalImage ? (
+          <Image source={{ uri: journalImage }} style={styles.journalImage} />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Text style={styles.imagePlaceholderText}>🖼️</Text>
+            <Text style={styles.uploadText}>Upload</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+      <TextInput
+        style={styles.input}
+        placeholder="Journal Name"
+        value={journalName}
+        onChangeText={setJournalName}
+      />
+      <Button
+        label={isLoading ? "Creating..." : "Create Journal"}
+        style={styles.createButton}
+        backgroundColor={Colors.purple30}
+        onPress={handleCreateJournal}
+        disabled={!journalName.trim() || !journalImage || isLoading}
+      />
+    </View>
   );
 };
 

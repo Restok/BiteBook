@@ -1,24 +1,42 @@
-import React, { useState } from "react";
-import { View, StyleSheet } from "react-native";
-import { Text, Button, Colors } from "react-native-ui-lib";
+import React, { useState, useCallback, useEffect } from "react";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { Text, Button, Colors, Icon } from "react-native-ui-lib";
+import {
+  useFocusEffect,
+  useIsFocused,
+  useNavigation,
+} from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { useJournalContext } from "../contexts/JournalContext";
+
 import VerticalTimeline from "../components/VerticalTimeline";
 import GroupPicker from "../components/GroupPicker";
 import CreatePostModal from "../components/post/CreatePostModal";
-import ExpandedPostOverlay from "../components/post/ExpandedPostOverlay";
+import GroupPickerOverlay from "../components/journals/GroupPickerOverlay";
+import { Journal } from "../types/journal";
+import { RootStackParamList } from "../types/navigation";
+import { Ionicons } from "@expo/vector-icons";
+import JournalSettingsModal from "../components/journals/JournalSettingsModal";
 
 const HomeScreen: React.FC = () => {
-  const [selectedJournal, setSelectedJournal] = useState({
-    id: "user",
-    name: "You",
-    icon: "👤",
-  });
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const isFocused = useIsFocused();
+  const {
+    selectedJournal,
+    journals,
+    setSelectedJournal,
+    loadJournals,
+    loadEntriesForDate,
+  } = useJournalContext();
 
-  const [journals, setJournals] = useState([
-    { id: "user", name: "You", icon: "👤" },
-    { id: "group1", name: "Family", icon: "👨‍👩‍👧‍👦" },
-    { id: "group2", name: "Friends", icon: "👥" },
-    // Add more journals as needed
-  ]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isGroupPickerOverlayVisible, setGroupPickerOverlayVisible] =
+    useState(false);
+  const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
+
+  const handleCloseSettingsModal = useCallback(() => {
+    setIsSettingsModalVisible(false);
+  }, []);
 
   const currentDate = new Date().toLocaleDateString("en-US", {
     month: "short",
@@ -26,36 +44,81 @@ const HomeScreen: React.FC = () => {
     weekday: "short",
   });
 
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isOverlayVisible, setOverlayVisible] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFocused) {
+        loadJournals();
+        setIsModalVisible(false);
+        setGroupPickerOverlayVisible(false);
+      }
+    }, [isFocused, loadJournals])
+  );
+  useEffect(() => {
+    if (!isFocused) {
+      setIsModalVisible(false);
+      setGroupPickerOverlayVisible(false);
+      setIsSettingsModalVisible(false);
+    }
+  }, [isFocused]);
 
-  const handleAddPost = () => {
+  const handleJournalSelect = useCallback(
+    async (journal: Journal) => {
+      setSelectedJournal(journal);
+      setGroupPickerOverlayVisible(false);
+    },
+    [setSelectedJournal]
+  );
+
+  const handleAddPost = useCallback(() => {
     setIsModalVisible(true);
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setIsModalVisible(false);
-  };
+  }, []);
 
-  const handleSubmitPost = (post: {
-    images: string[];
-    title: string;
-    type: string;
-  }) => {
-    console.log("New post:", post);
-  };
+  const handleSubmitPost = useCallback(() => {
+    setIsModalVisible(false);
+    loadEntriesForDate(new Date());
+  }, []);
+  const handleSettingsPress = useCallback(() => {
+    // TODO: Implement settings navigation or modal
+    setIsSettingsModalVisible(true);
+  }, []);
 
-  const handleEntryPress = (post) => {
-    setSelectedPost(post);
-    setOverlayVisible(true);
-  };
+  const handleEntryPress = useCallback(
+    (post) => {
+      navigation.navigate("ExpandedPost", { post });
+    },
+    [navigation]
+  );
+
+  const handleJournalLeft = useCallback(() => {
+    setSelectedJournal(null);
+    loadJournals();
+  }, [loadJournals]);
+
+  const handleOpenGroupPicker = useCallback(() => {
+    setGroupPickerOverlayVisible(true);
+  }, []);
+
+  const handleCloseGroupPicker = useCallback(() => {
+    setGroupPickerOverlayVisible(false);
+  }, []);
 
   return (
     <View style={styles.container}>
+      <View style={styles.topBar}>
+        <GroupPicker
+          selectedJournal={selectedJournal}
+          onOpenPicker={handleOpenGroupPicker}
+        />
+        <TouchableOpacity onPress={handleSettingsPress}>
+          <Ionicons name="settings-outline" size={24} color={Colors.primary} />
+        </TouchableOpacity>
+      </View>
       <View style={styles.listContainer}>
-        <GroupPicker onGroupSelect={setSelectedJournal} />
-        <Text text30BL style={styles.dateText}>
+        <Text text40BL style={styles.dateText}>
           {currentDate}
         </Text>
         <VerticalTimeline onEntryPress={handleEntryPress} />
@@ -64,8 +127,6 @@ const HomeScreen: React.FC = () => {
         visible={isModalVisible}
         onClose={handleCloseModal}
         onSubmit={handleSubmitPost}
-        journals={journals}
-        currentJournal={selectedJournal}
       />
       <Button
         text40R
@@ -76,11 +137,22 @@ const HomeScreen: React.FC = () => {
         round
         onPress={handleAddPost}
       />
-      <ExpandedPostOverlay
-        visible={isOverlayVisible}
-        onClose={() => setOverlayVisible(false)}
-        // post={selectedPost}
-      />
+      {isGroupPickerOverlayVisible && (
+        <GroupPickerOverlay
+          visible={isGroupPickerOverlayVisible}
+          onClose={handleCloseGroupPicker}
+          onJournalSelect={handleJournalSelect}
+          journals={journals}
+        />
+      )}
+      {selectedJournal && (
+        <JournalSettingsModal
+          journal={selectedJournal}
+          visible={isSettingsModalVisible}
+          onClose={handleCloseSettingsModal}
+          onJournalLeft={handleJournalLeft}
+        />
+      )}
     </View>
   );
 };
@@ -88,15 +160,21 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
+  },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 20,
+    paddingHorizontal: 20,
   },
   listContainer: {
-    paddingTop: 15,
     flex: 1,
+    paddingLeft: 20,
   },
   dateText: {
     textAlign: "left",
-    marginBottom: 16,
+    paddingBottom: 25,
   },
   addButton: {
     position: "absolute",

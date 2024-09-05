@@ -57,12 +57,7 @@ const ExpandedPostOverlay: React.FC<ExpandedPostOverlayProps> = ({
   };
 
   return (
-    <Modal
-      animationType="fade"
-      transparent={false}
-      visible={visible}
-      onRequestClose={onClose}
-    >
+    <Modal animationType="fade" transparent={false} onRequestClose={onClose}>
       <SafeAreaView style={styles.container}>
         <Carousel
           width={SCREEN_WIDTH}

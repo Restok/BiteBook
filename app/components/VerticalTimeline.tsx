@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -13,14 +13,102 @@ import {
   State,
   NativeViewGestureHandler,
 } from "react-native-gesture-handler";
+import { useDebouncedCallback } from "use-debounce";
+import { Entry } from "../types/entry";
+import { useJournalContext } from "../contexts/JournalContext";
 
-interface TimelineEntry {
-  id: string;
-  timestamp: Date;
-  imageUrl: string;
-  userId: string;
-  title: string;
+interface TimeMarkersProps {
+  currentTime: number;
+  zoomLevel: number;
+  intervalHours: number;
 }
+
+const TimeMarkers: React.FC<TimeMarkersProps> = React.memo(
+  ({ currentTime, zoomLevel, intervalHours }) => {
+    const hourToDate = (hour: number) => {
+      const date = new Date(currentTime);
+      date.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
+      return date.getTime();
+    };
+
+    const getEntryPosition = useCallback(
+      (timestamp: number) => {
+        "worklet";
+        const minutesDiff = (currentTime - timestamp) / (60 * 1000);
+        return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
+      },
+      [currentTime, zoomLevel]
+    );
+
+    const markers = [];
+    for (let i = 0; i < 24; i += 1) {
+      const markerTime = hourToDate(i);
+      const hoursDiff = (currentTime - markerTime) / (1000 * 60 * 60);
+
+      // const animatedStyle = useAnimatedStyle(() => {
+      //   const isVisible = i % intervalHours === 0 && hoursDiff >= 0;
+      //   if (isVisible) {
+      //     return {
+      //       transform: [
+      //         {
+      //           translateY: withTiming(getEntryPosition(markerTime), {
+      //             duration: 16,
+      //           }),
+      //         },
+      //       ],
+      //       opacity: 1,
+      //     };
+      //   }
+      //   return {
+      //     transform: [{ translateY: getEntryPosition(markerTime) }],
+      //     opacity: 0,
+      //   };
+      // });
+
+      markers.push(
+        <View
+          key={i}
+          style={[
+            styles.timeMarker,
+            {
+              top: getEntryPosition(markerTime),
+              opacity: i % intervalHours === 0 && hoursDiff >= 0 ? 1 : 0,
+            },
+          ]}
+        >
+          <Text style={styles.timeMarkerText}>
+            {new Date(markerTime).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
+      );
+    }
+    markers.push(
+      <View
+        key="now"
+        style={[
+          styles.timeMarker,
+          {
+            top: getEntryPosition(currentTime),
+            opacity: 1,
+          },
+        ]}
+      >
+        <Text style={styles.timeMarkerText}>
+          {new Date(currentTime).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </Text>
+      </View>
+    );
+
+    return <>{markers}</>;
+  }
+);
+TimeMarkers.displayName = "TimeMarkers";
 
 const HOUR_HEIGHT = 120;
 const INITIAL_HOURS_SHOWN = 8;
@@ -28,48 +116,60 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 const LINE_LEFT_MARGIN = Math.max(SCREEN_WIDTH * 0.2, 80);
 
 type VerticalTimelineProps = {
-  onEntryPress: (entry: TimelineEntry) => void;
+  onEntryPress: (entry: Entry) => void;
 };
 
 const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
   onEntryPress,
 }) => {
-  const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [zoomLevel, setZoomLevel] = useState(0.5);
   const [visibleHours, setVisibleHours] = useState(INITIAL_HOURS_SHOWN);
+  const [isPinching, setIsPinching] = useState(false);
+
+  const updateVisibleHours = (newVisibleHours: number) => {
+    //Round to nearest 1
+    setVisibleHours(Math.round(newVisibleHours));
+  };
+
   const scrollViewRef = useRef<ScrollView>(null);
   const pinchRef = useRef(null);
   const nativeViewRef = useRef(null);
   const lastPinchScale = useRef(1);
-  const lastPinchCenter = useRef(0);
   const scrollOffset = useRef(0);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(Date.now());
   const [scrollViewHeight, setScrollViewHeight] = useState(600);
-  const [totalHoursLoaded, setTotalHoursLoaded] = useState(
-    new Date().getHours()
-  );
-  const [contentHeight, setContentHeight] = useState(
-    totalHoursLoaded * HOUR_HEIGHT * zoomLevel
-  );
+
+  const calcHours = () => {
+    const date = new Date();
+    return date.getHours() + date.getMinutes() / 60 + 1;
+  };
+
+  const [totalHoursLoaded, setTotalHoursLoaded] = useState(calcHours());
+
+  const calcContentHeight = () => {
+    return totalHoursLoaded * HOUR_HEIGHT * zoomLevel;
+  };
+  const [contentHeight, setContentHeight] = useState(calcContentHeight());
+  const lastPinchHeight = useRef(contentHeight);
+
   const lastContentHeight = useRef(contentHeight);
-  const [isLoading, setIsLoading] = useState(false);
 
   const onScrollViewLayout = (event) => {
     const { height } = event.nativeEvent.layout;
     setScrollViewHeight(height);
   };
+  const { entries } = useJournalContext();
+
   useEffect(() => {
-    const now = new Date();
+    const now = Date.now();
     setCurrentTime(now);
-    fetchEntries(now);
 
     const intervalId = setInterval(() => {
-      const cur = new Date();
+      const cur = Date.now();
       setCurrentTime((prevTime) => {
-        if (cur.getMinutes() !== prevTime.getMinutes()) {
-          fetchEntries(cur);
-          if (cur.getHours() !== prevTime.getHours()) {
-            setTotalHoursLoaded(cur.getHours());
+        if (Math.floor(cur / 60000) !== Math.floor(prevTime / 60000)) {
+          if (Math.floor(cur / 3600000) !== Math.floor(prevTime / 3600000)) {
+            setTotalHoursLoaded(new Date(cur).getHours());
           }
           return cur;
         }
@@ -82,78 +182,8 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
   }, []);
 
   useEffect(() => {
-    setContentHeight(totalHoursLoaded * HOUR_HEIGHT * zoomLevel);
+    setContentHeight(calcContentHeight());
   }, [scrollViewHeight, totalHoursLoaded]);
-
-  const fetchEntries = async (endDate: Date) => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Mock data
-    const mockEntries: TimelineEntry[] = [
-      {
-        id: `${Date.now()}-1`,
-        timestamp: new Date(endDate.getTime() - 3 * 60 * 60 * 1000),
-        imageUrl: "https://via.placeholder.com/50",
-        userId: "user1",
-        title: "New entry",
-      },
-      {
-        id: `${Date.now()}-2`,
-        timestamp: new Date(endDate.getTime() - 6 * 60 * 60 * 1000),
-        imageUrl: "https://via.placeholder.com/50",
-        userId: "user2",
-        title: "Another new entry",
-      },
-    ];
-
-    setEntries(mockEntries);
-    setIsLoading(false);
-  };
-  const hourToDate = (hour: number) => {
-    const date = new Date(currentTime);
-    date.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
-    return date;
-  };
-  const renderTimeMarkers = () => {
-    const markers = [];
-    const intervalHours = getIntervalHours();
-    for (let i = 0; i < totalHoursLoaded; i += intervalHours) {
-      const markerTime = hourToDate(i);
-
-      const hoursDiff =
-        (currentTime.getTime() - markerTime.getTime()) / (1000 * 60 * 60);
-      const yPosition = hoursDiff * HOUR_HEIGHT * zoomLevel;
-
-      const isCloseToCurrentTime = Math.abs(hoursDiff) < intervalHours / 2;
-      if (!isCloseToCurrentTime) {
-        markers.push(
-          <View key={i} style={[styles.timeMarker, { top: yPosition }]}>
-            <Text style={styles.timeMarkerText}>
-              {markerTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Text>
-          </View>
-        );
-      }
-    }
-
-    markers.push(
-      <View key="current" style={[styles.timeMarker, { top: 0 }]}>
-        <Text style={styles.timeMarkerText}>
-          {currentTime.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
-      </View>
-    );
-
-    return markers;
-  };
 
   const getIntervalHours = () => {
     if (visibleHours >= 12) {
@@ -179,7 +209,10 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
             style={styles.entryContent}
             onPress={() => onEntryPress(entry)}
           >
-            <Image source={{ uri: entry.imageUrl }} style={styles.entryImage} />
+            <Image
+              source={{ uri: entry.images[0] }}
+              style={styles.entryImage}
+            />
             <Text style={styles.entryTitle}>{entry.title}</Text>
           </TouchableOpacity>
         </View>
@@ -187,52 +220,59 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
     ));
   };
 
-  const getEntryPosition = (timestamp: Date) => {
-    const minutesDiff =
-      (currentTime.getTime() - timestamp.getTime()) / (60 * 1000);
+  const getEntryPosition = (timestamp: number) => {
+    const minutesDiff = (currentTime - timestamp) / (60 * 1000);
     return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
   };
 
   const onPinchGestureEvent = ({ nativeEvent }) => {
     const { scale, focalY } = nativeEvent;
-    const diff = scale - lastPinchScale.current;
+    const diff = (scale - lastPinchScale.current) * 1.5;
     const zoomMin = scrollViewHeight / (totalHoursLoaded * HOUR_HEIGHT);
     const newZoomLevel = Math.max(zoomMin, Math.min(zoomLevel * (1 + diff), 3));
-
-    const oldContentHeight = totalHoursLoaded * HOUR_HEIGHT * zoomLevel;
-    const newContentHeight = totalHoursLoaded * HOUR_HEIGHT * newZoomLevel;
-
-    const focusPointRatio = (scrollOffset.current + focalY) / oldContentHeight;
-    const newOffset = focusPointRatio * newContentHeight - focalY;
-
     setZoomLevel(newZoomLevel);
-    setContentHeight(newContentHeight);
+    const newContentHeight = calcContentHeight();
+
     lastContentHeight.current = newContentHeight;
 
     lastPinchScale.current = scale;
-
-    // Adjust binning based on zoom level
     const newVisibleHours = scrollViewHeight / (HOUR_HEIGHT * newZoomLevel);
-    setVisibleHours(newVisibleHours);
+    updateVisibleHours(newVisibleHours);
 
     if (scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y: newOffset, animated: true });
+      const newScrollPosition =
+        (scrollOffset.current * newContentHeight) / lastPinchHeight.current;
+      scrollViewRef.current.scrollTo({
+        y: newScrollPosition,
+        animated: false,
+      });
     }
   };
 
   const onPinchHandlerStateChange = ({ nativeEvent }) => {
     if (nativeEvent.state === State.BEGAN) {
       lastPinchScale.current = 1;
-      lastPinchCenter.current = nativeEvent.focalY;
+      lastPinchHeight.current = contentHeight;
     } else if (nativeEvent.state === State.END) {
       lastPinchScale.current = 1;
+      // Ensure final update of visible hours and animated zoom level
+      const finalVisibleHours = scrollViewHeight / (HOUR_HEIGHT * zoomLevel);
+      updateVisibleHours(finalVisibleHours);
+      setContentHeight(calcContentHeight());
+
+      setIsPinching(false);
+    } else if (nativeEvent.state === State.ACTIVE) {
+      setIsPinching(true);
+    } else {
+      setIsPinching(false);
     }
   };
 
   const onScroll = ({ nativeEvent }) => {
-    scrollOffset.current = nativeEvent.contentOffset.y;
+    if (contentHeight > scrollViewHeight && !isPinching) {
+      scrollOffset.current = nativeEvent.contentOffset.y;
+    }
   };
-
   return (
     <PinchGestureHandler
       ref={pinchRef}
@@ -248,13 +288,17 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
           ref={scrollViewRef}
           style={styles.container}
           onScroll={onScroll}
-          keyboardShouldPersistTaps={"always"}
-          scrollEventThrottle={400}
+          scrollEventThrottle={16}
           onLayout={onScrollViewLayout}
+          scrollEnabled={!isPinching}
         >
           <View style={[styles.timeline, { height: contentHeight }]}>
             <View style={styles.verticalLine} />
-            {renderTimeMarkers()}
+            <TimeMarkers
+              currentTime={currentTime}
+              zoomLevel={zoomLevel}
+              intervalHours={getIntervalHours()}
+            />
             {renderEntries()}
           </View>
         </ScrollView>

@@ -1,60 +1,57 @@
-import React, { useState } from "react";
-import { TouchableOpacity, StyleSheet } from "react-native";
+import React from "react";
+import { TouchableOpacity, StyleSheet, View } from "react-native";
 import { Text, Avatar, Colors } from "react-native-ui-lib";
-import GroupPickerOverlay from "./groups/GroupPickerOverlay";
+import { Journal } from "../types/journal";
 
-interface Group {
-  id: string;
-  name: string;
-  icon: string;
+interface GroupPickerProps {
+  selectedJournal: Journal | null;
+  onOpenPicker: () => void;
 }
 
-const GroupPicker: React.FC<{ onGroupSelect: (group: Group) => void }> = ({
-  onGroupSelect,
+const GroupPicker: React.FC<GroupPickerProps> = ({
+  selectedJournal,
+  onOpenPicker,
 }) => {
-  const [selectedGroup, setSelectedGroup] = useState({
-    id: "user",
-    name: "You",
-    icon: "👤",
-  });
-  const [overlayVisible, setOverlayVisible] = useState(false);
-
-  const handleGroupSelect = (group: Group) => {
-    setSelectedGroup(group);
-    setOverlayVisible(false);
-    onGroupSelect(group);
-  };
-
   return (
-    <>
-      <TouchableOpacity
-        style={styles.picker}
-        onPress={() => setOverlayVisible(true)}
-      >
-        <Avatar size={30} label={selectedGroup.icon} />
-        <Text style={styles.pickerText}>{selectedGroup.name}</Text>
-      </TouchableOpacity>
-
-      <GroupPickerOverlay
-        visible={overlayVisible}
-        onClose={() => setOverlayVisible(false)}
-        onGroupSelect={handleGroupSelect}
-      />
-    </>
+    <TouchableOpacity style={styles.pickerContainer} onPress={onOpenPicker}>
+      {selectedJournal && (
+        <Avatar
+          size={40}
+          source={{ uri: selectedJournal.icon }}
+          containerStyle={styles.avatar}
+        />
+      )}
+      <Text style={styles.pickerText}>
+        {selectedJournal?.name || "Select Journal"}
+      </Text>
+      {/* <Text style={styles.dropdownArrow}>▼</Text> */}
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  picker: {
+  pickerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 10,
-    backgroundColor: Colors.grey70,
-    borderRadius: 20,
+    backgroundColor: Colors.green40,
+    padding: 5,
+    marginVertical: 15,
+    borderRadius: 5,
+    minWidth: "40%",
+  },
+  avatar: {
+    marginRight: 10,
   },
   pickerText: {
-    marginLeft: 10,
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: "bold",
+    color: Colors.white,
+    // textDecorationLine: "underline",
+    marginRight: 10,
+  },
+  dropdownArrow: {
+    color: Colors.white,
+    fontSize: 20,
   },
 });
 
