@@ -6,7 +6,6 @@ import {
   Image,
   Dimensions,
   TouchableOpacity,
-  FlatList,
 } from "react-native";
 import { Text, Avatar, Colors } from "react-native-ui-lib";
 import { useUserContext } from "../contexts/UserContext";
@@ -27,78 +26,78 @@ interface TimeMarkersProps {
   intervalHours: number;
 }
 
-// const TimeMarkers: React.FC<TimeMarkersProps> = React.memo(
-//   ({ currentTime, zoomLevel, intervalHours }) => {
-//     const hourToDate = (hour: number) => {
-//       const date = new Date(currentTime);
-//       date.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
-//       return date.getTime();
-//     };
-//     const getEntryPosition = useCallback(
-//       (timestamp: number) => {
-//         "worklet";
-//         const minutesDiff = (currentTime - timestamp) / (60 * 1000);
-//         return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
-//       },
-//       [currentTime, zoomLevel]
-//     );
-//     const getDateString = (timestamp: number) => {
-//       return new Date(timestamp)
-//         .toLocaleTimeString([], {
-//           hour: "2-digit",
-//           minute: "2-digit",
-//         })
-//         .replace(/\s/g, "");
-//     };
+const TimeMarkers: React.FC<TimeMarkersProps> = React.memo(
+  ({ currentTime, zoomLevel, intervalHours }) => {
+    const hourToDate = (hour: number) => {
+      const date = new Date(currentTime);
+      date.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
+      return date.getTime();
+    };
+    const getEntryPosition = useCallback(
+      (timestamp: number) => {
+        "worklet";
+        const minutesDiff = (currentTime - timestamp) / (60 * 1000);
+        return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
+      },
+      [currentTime, zoomLevel]
+    );
+    const getDateString = (timestamp: number) => {
+      return new Date(timestamp)
+        .toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+        .replace(/\s/g, "");
+    };
 
-//     const markers = [];
-//     for (let i = 0; i < 24; i += 1) {
-//       const markerTime = hourToDate(i);
-//       const hoursDiff = (currentTime - markerTime) / (1000 * 60 * 60);
-//       const isVisible =
-//         i % intervalHours === 0 &&
-//         hoursDiff >= 0 &&
-//         hoursDiff > intervalHours / 2;
-//       if (hoursDiff < 0) break;
-//       if (!isVisible) continue;
-//       const dateString = getDateString(markerTime);
-//       markers.push(
-//         <View
-//           key={i}
-//           style={[
-//             styles.timeMarker,
-//             {
-//               transform: [{ translateY: getEntryPosition(markerTime) }],
-//               opacity: isVisible ? 1 : 0,
-//             },
-//           ]}
-//         >
-//           <Text style={styles.timeMarkerText}>{dateString}</Text>
-//         </View>
-//       );
-//     }
-//     const dateString = getDateString(currentTime);
-//     markers.push(
-//       <View
-//         key="now"
-//         style={[
-//           styles.timeMarker,
-//           {
-//             top: getEntryPosition(currentTime),
-//             opacity: 1,
-//           },
-//         ]}
-//       >
-//         <Text style={styles.timeMarkerText}>{dateString}</Text>
-//       </View>
-//     );
-//     return <>{markers}</>;
-//   }
-// );
-// TimeMarkers.displayName = "TimeMarkers";
+    const markers = [];
+    for (let i = 0; i < 24; i += 1) {
+      const markerTime = hourToDate(i);
+      const hoursDiff = (currentTime - markerTime) / (1000 * 60 * 60);
+      const isVisible =
+        i % intervalHours === 0 &&
+        hoursDiff >= 0 &&
+        hoursDiff > intervalHours / 2;
+      if (hoursDiff < 0) break;
+      if (!isVisible) continue;
+      const dateString = getDateString(markerTime);
+      markers.push(
+        <View
+          key={i}
+          style={[
+            styles.timeMarker,
+            {
+              transform: [{ translateY: getEntryPosition(markerTime) }],
+              opacity: isVisible ? 1 : 0,
+            },
+          ]}
+        >
+          <Text style={styles.timeMarkerText}>{dateString}</Text>
+        </View>
+      );
+    }
+    const dateString = getDateString(currentTime);
+    markers.push(
+      <View
+        key="now"
+        style={[
+          styles.timeMarker,
+          {
+            top: getEntryPosition(currentTime),
+            opacity: 1,
+          },
+        ]}
+      >
+        <Text style={styles.timeMarkerText}>{dateString}</Text>
+      </View>
+    );
+    return <>{markers}</>;
+  }
+);
+TimeMarkers.displayName = "TimeMarkers";
 
 const HOUR_HEIGHT = 120;
-const INITIAL_HOURS_SHOWN = 24;
+const INITIAL_HOURS_SHOWN = 8;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const LINE_LEFT_MARGIN = Math.max(SCREEN_WIDTH * 0.2, 80);
 
@@ -195,93 +194,76 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
       return 0.5;
     }
   };
-  const hourToDate = (hour: number) => {
-    const date = new Date(currentTime);
-    date.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
-    return date.getTime();
-  };
-  const getEntryPosition = useCallback(
-    (timestamp: number) => {
-      "worklet";
-      const minutesDiff = (currentTime - timestamp) / (60 * 1000);
-      return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
+  const groupEntries = useCallback(
+    (entries: Entry[]) => {
+      const TIME_THRESHOLD = HOUR_HEIGHT * zoomLevel * 0.5; // Adjust this factor as needed
+      const groups: Entry[][] = [];
+      let currentGroup: Entry[] = [];
+
+      entries.forEach((entry, index) => {
+        if (currentGroup.length === 0) {
+          currentGroup.push(entry);
+        } else {
+          const firstEntryInGroup = currentGroup[0];
+          const distance = Math.abs(
+            getEntryPosition(entry.timestamp) -
+              getEntryPosition(firstEntryInGroup.timestamp)
+          );
+
+          if (distance <= TIME_THRESHOLD) {
+            currentGroup.push(entry);
+          } else {
+            groups.push(currentGroup);
+            currentGroup = [entry];
+          }
+        }
+
+        if (index === entries.length - 1 && currentGroup.length > 0) {
+          groups.push(currentGroup);
+        }
+      });
+
+      return groups;
     },
-    [currentTime, zoomLevel]
+    [zoomLevel, getEntryPosition]
   );
-  const getDateString = (timestamp: number) => {
-    return new Date(timestamp)
-      .toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-      .replace(/\s/g, "");
+  const renderEntries = () => {
+    return entries.map((entry, index) => {
+      const user = journalUsersById[entry.userId];
+      return (
+        <View key={entry.id}>
+          <View
+            style={[styles.entry, { top: getEntryPosition(entry.timestamp) }]}
+          >
+            <Avatar source={{ uri: user?.photoURL }} size={30} />
+            <TouchableOpacity
+              style={styles.entryTextContainer}
+              onPress={() => onEntryPress(index)}
+            >
+              <Text style={styles.entryTitle} numberOfLines={1}>
+                {entry.title}
+              </Text>
+              <View style={styles.entryLine} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.entryContent}
+              onPress={() => onEntryPress(index)}
+            >
+              <Image
+                source={{ uri: entry.images[0] }}
+                style={styles.entryImage}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    });
   };
 
-  const markers = [];
-  const intervalHours = getIntervalHours();
-  for (let i = 0; i < 24; i += 1) {
-    const markerTime = hourToDate(i);
-    // const hoursDiff = (currentTime - markerTime) / (1000 * 60 * 60);
-    const isVisible = i % intervalHours === 0;
-    // hoursDiff >= 0 &&
-    // hoursDiff > intervalHours / 2;
-    // if (hoursDiff < 0) break;
-    if (!isVisible) continue;
-    const dateString = getDateString(markerTime);
-    markers.push(
-      <View
-        key={i}
-        style={[
-          styles.timeMarker,
-          {
-            height: HOUR_HEIGHT * zoomLevel * intervalHours,
-          },
-        ]}
-      >
-        <Text style={styles.timeMarkerText}>{dateString}</Text>
-      </View>
-    );
-  }
-  const renderItem = ({ item }: { item }) => {
-    return item;
+  const getEntryPosition = (timestamp: number) => {
+    const minutesDiff = (currentTime - timestamp) / (60 * 1000);
+    return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
   };
-  // const renderEntries = () => {
-  //   return entries.map((entry, index) => {
-  //     const user = journalUsersById[entry.userId];
-  //     return (
-  //       <View key={entry.id}>
-  //         <View
-  //           style={[styles.entry, { top: getEntryPosition(entry.timestamp) }]}
-  //         >
-  //           <Avatar source={{ uri: user?.photoURL }} size={30} />
-  //           <TouchableOpacity
-  //             style={styles.entryTextContainer}
-  //             onPress={() => onEntryPress(index)}
-  //           >
-  //             <Text style={styles.entryTitle} numberOfLines={1}>
-  //               {entry.title}
-  //             </Text>
-  //             <View style={styles.entryLine} />
-  //           </TouchableOpacity>
-  //           <TouchableOpacity
-  //             style={styles.entryContent}
-  //             onPress={() => onEntryPress(index)}
-  //           >
-  //             <Image
-  //               source={{ uri: entry.images[0] }}
-  //               style={styles.entryImage}
-  //             />
-  //           </TouchableOpacity>
-  //         </View>
-  //       </View>
-  //     );
-  //   });
-  // };
-
-  // const getEntryPosition = (timestamp: number) => {
-  //   const minutesDiff = (currentTime - timestamp) / (60 * 1000);
-  //   return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
-  // };
 
   const onPinchGestureEvent = ({ nativeEvent }) => {
     const { scale, focalY } = nativeEvent;
@@ -289,10 +271,23 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
     const zoomMin = scrollViewHeight / (totalHoursLoaded * HOUR_HEIGHT);
     const newZoomLevel = Math.max(zoomMin, Math.min(zoomLevel * (1 + diff), 3));
     setZoomLevel(newZoomLevel);
-    console.log(newZoomLevel);
+    const newContentHeight = calcContentHeight();
+    setContentHeight(newContentHeight);
+
+    lastContentHeight.current = newContentHeight;
+
     lastPinchScale.current = scale;
     const newVisibleHours = scrollViewHeight / (HOUR_HEIGHT * newZoomLevel);
     updateVisibleHours(newVisibleHours);
+
+    if (scrollViewRef.current) {
+      const newScrollPosition =
+        (scrollOffset.current * newContentHeight) / lastPinchHeight.current;
+      // scrollViewRef.current.scrollTo({
+      //   y: newScrollPosition,
+      //   animated: false,
+      // });
+    }
   };
 
   const onPinchHandlerStateChange = ({ nativeEvent }) => {
@@ -318,7 +313,6 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
       scrollOffset.current = nativeEvent.contentOffset.y;
     }
   };
-
   return (
     <Container level="1" style={styles.container}>
       <PinchGestureHandler
@@ -331,12 +325,29 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
           ref={nativeViewRef}
           simultaneousHandlers={pinchRef}
         >
-          <FlatList data={markers} renderItem={renderItem}></FlatList>
+          <ScrollView
+            ref={scrollViewRef}
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+            onLayout={onScrollViewLayout}
+            scrollEnabled={!isPinching}
+          >
+            <View style={[styles.timeline, { height: contentHeight }]}>
+              <View style={styles.verticalLine} />
+              <TimeMarkers
+                currentTime={currentTime}
+                zoomLevel={zoomLevel}
+                intervalHours={getIntervalHours()}
+              />
+              {renderEntries()}
+            </View>
+          </ScrollView>
         </NativeViewGestureHandler>
       </PinchGestureHandler>
     </Container>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -355,8 +366,15 @@ const styles = StyleSheet.create({
     width: 4,
     backgroundColor: "#666464",
   },
-  timeMarker: {},
+  timeMarker: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+  },
   timeMarkerText: {
+    position: "absolute",
+    width: 70,
+    textAlign: "right",
     fontWeight: "bold",
     fontSize: 16,
   },
