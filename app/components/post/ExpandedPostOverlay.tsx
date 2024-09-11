@@ -95,7 +95,11 @@ const ExpandedPostOverlay: React.FC<ExpandedPostOverlayProps> = ({
 
   const renderReactions = () => {
     if (!entry.reactions) return null;
-    if (!entry.reactions["❤️"]) {
+    const numberOfReactions = Object.values(entry.reactions).reduce(
+      (acc, val) => acc + val.length,
+      0
+    );
+    if (numberOfReactions === 0) {
       entry.reactions["❤️"] = [];
     }
     return Object.entries(entry.reactions).map(([emoji, users]) => {
@@ -178,6 +182,9 @@ const ExpandedPostOverlay: React.FC<ExpandedPostOverlayProps> = ({
         <Carousel
           width={SCREEN_WIDTH}
           data={entry.images}
+          panGestureHandlerProps={{
+            activeOffsetX: [-5, 5],
+          }}
           renderItem={renderItem}
           onSnapToItem={setActiveIndex}
           onProgressChange={(_, absoluteProgress) => {
@@ -251,8 +258,8 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT,
   },
   imageContainer: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    width: "100%",
+    height: "100%",
     backgroundColor: "black",
   },
   image: {

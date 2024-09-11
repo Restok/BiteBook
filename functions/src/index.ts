@@ -66,7 +66,7 @@ async function calculatePoints(entryData: any): Promise<number> {
   Make sure NOTHING GETS INCLUDED TWICE. Meaning no ingredient gets double dipped. If you include a dish, DO NOT then also include the ingredients of that dish.  Low sugar desserts might be yellow, higher sugar desserts would be orange. Sugary drinks would be red. Very processed snacks and junk food would be red, cleaner snacks would be yellow-orange, or even green.
 
 Respond in this format. Do not say ANYTHING else:
-  ingredient name: a good representative emoji, score, number for serving size, category, weight, short 1-2 sentences for score rating, talking to the user in a fun light hearted tone. In your reasoning, try not to mention what the actual score is.
+  ingredient name: a good representative emoji, score, number for serving size, category, weight, short 1-2 sentences for score rating, talking to the user in a fun light hearted tone. Answer with life and personality! In your reasoning, try not to mention what the actual score is.
 Each line should be  
 [string]: [emoji char], [string, red, yellow, orange, or green], [number], [string], [number], [string]
 

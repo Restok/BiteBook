@@ -167,7 +167,7 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
   }, [selectedDate]);
 
   const calcContentHeight = () => {
-    return totalHoursLoaded * HOUR_HEIGHT * zoomLevel;
+    return totalHoursLoaded * HOUR_HEIGHT * zoomLevel + 50;
   };
   const [contentHeight, setContentHeight] = useState(calcContentHeight());
   const lastPinchHeight = useRef(contentHeight);
@@ -194,9 +194,31 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
       return 0.5;
     }
   };
+
+  const renderEntries = () => {
+    const groupedEntries = groupEntries(entries);
+    let entryIndex = 0;
+    return groupedEntries.map((group) => {
+      if (group.length === 1) {
+        const singleEntry = renderSingleEntry(group[0], entryIndex);
+        entryIndex++;
+        return singleEntry;
+      } else {
+        const groupedEntry = renderGroupedEntries(group, entryIndex);
+        entryIndex += group.length;
+        return groupedEntry;
+      }
+    });
+  };
+
+  const getEntryPosition = (timestamp: number) => {
+    const minutesDiff = (currentTime - timestamp) / (60 * 1000);
+    return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
+  };
+
   const groupEntries = useCallback(
     (entries: Entry[]) => {
-      const TIME_THRESHOLD = HOUR_HEIGHT * zoomLevel * 0.5; // Adjust this factor as needed
+      const TIME_THRESHOLD = 30;
       const groups: Entry[][] = [];
       let currentGroup: Entry[] = [];
 
@@ -227,53 +249,102 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
     },
     [zoomLevel, getEntryPosition]
   );
-  const renderEntries = () => {
-    return entries.map((entry, index) => {
-      const user = journalUsersById[entry.userId];
-      return (
-        <View key={entry.id}>
-          <View
-            style={[styles.entry, { top: getEntryPosition(entry.timestamp) }]}
-          >
-            <Avatar source={{ uri: user?.photoURL }} size={30} />
-            <TouchableOpacity
-              style={styles.entryTextContainer}
-              onPress={() => onEntryPress(index)}
-            >
-              <Text style={styles.entryTitle} numberOfLines={1}>
-                {entry.title}
-              </Text>
-              <View style={styles.entryLine} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.entryContent}
-              onPress={() => onEntryPress(index)}
-            >
+
+  const renderGroupedEntries = (group: Entry[], groupIndex: number) => {
+    const firstEntry = group[0];
+    // const uniqueUsers = Array.from(new Set(group.map((entry) => entry.userId)));
+    const uniqueUsers = group.map((entry) => entry.userId);
+    const displayUsers = uniqueUsers.slice(0, 3);
+    const hasMoreUsers = uniqueUsers.length > 3;
+    return (
+      <View key={`group-${groupIndex}`}>
+        <View
+          style={[
+            styles.entry,
+            {
+              top: getEntryPosition(firstEntry.timestamp),
+              left: LINE_LEFT_MARGIN - displayUsers.length * 30 + 20,
+            },
+          ]}
+        >
+          <View style={styles.groupedAvatarsContainer}>
+            {displayUsers.map((userId, index) => (
               <Image
-                source={{ uri: entry.images[0] }}
-                style={styles.entryImage}
+                key={index}
+                source={{ uri: journalUsersById[userId]?.photoURL }}
+                style={[styles.groupedAvatar, { zIndex: 3 - index }]}
               />
-            </TouchableOpacity>
+            ))}
           </View>
+          <TouchableOpacity
+            style={styles.entryTextContainer}
+            onPress={() => onEntryPress(entries.indexOf(firstEntry))}
+          >
+            <Text style={styles.entryTitle} numberOfLines={1}>
+              {group.length} entries
+            </Text>
+            <View style={styles.entryLine} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.groupedImagesContainer}
+            onPress={() => onEntryPress(entries.indexOf(firstEntry))}
+          >
+            {group.slice(0, 3).map((entry, index) => (
+              <Image
+                key={entry.id}
+                source={{ uri: entry.images[0] }}
+                style={[styles.groupedEntryImage, { zIndex: 3 - index }]}
+              />
+            ))}
+          </TouchableOpacity>
         </View>
-      );
-    });
+      </View>
+    );
   };
-
-  const getEntryPosition = (timestamp: number) => {
-    const minutesDiff = (currentTime - timestamp) / (60 * 1000);
-    return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
+  const renderSingleEntry = (entry: Entry, index: number) => {
+    const user = journalUsersById[entry.userId];
+    return (
+      <View key={entry.id}>
+        <View
+          style={[styles.entry, { top: getEntryPosition(entry.timestamp) }]}
+        >
+          <Avatar source={{ uri: user?.photoURL }} size={40} />
+          <TouchableOpacity
+            style={styles.entryTextContainer}
+            onPress={() => onEntryPress(index)}
+          >
+            <Text style={styles.entryTitle} numberOfLines={1}>
+              {entry.title}
+            </Text>
+            <View style={styles.entryLine} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.groupedImagesContainer}
+            onPress={() => onEntryPress(index)}
+          >
+            {entry.images
+              .slice(0, Math.min(3, entry.images.length))
+              .map((uri, index) => (
+                <Image
+                  key={uri}
+                  source={{ uri: uri }}
+                  style={[styles.groupedEntryImage, { zIndex: 3 - index }]}
+                />
+              ))}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
-
   const onPinchGestureEvent = ({ nativeEvent }) => {
     const { scale, focalY } = nativeEvent;
     const diff = (scale - lastPinchScale.current) * 2;
-    const zoomMin = scrollViewHeight / (totalHoursLoaded * HOUR_HEIGHT);
+    const zoomMin =
+      scrollViewHeight / (totalHoursLoaded * HOUR_HEIGHT + 50 / zoomLevel);
     const newZoomLevel = Math.max(zoomMin, Math.min(zoomLevel * (1 + diff), 3));
     setZoomLevel(newZoomLevel);
     const newContentHeight = calcContentHeight();
     setContentHeight(newContentHeight);
-
     lastContentHeight.current = newContentHeight;
 
     lastPinchScale.current = scale;
@@ -283,10 +354,11 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
     if (scrollViewRef.current) {
       const newScrollPosition =
         (scrollOffset.current * newContentHeight) / lastPinchHeight.current;
-      // scrollViewRef.current.scrollTo({
-      //   y: newScrollPosition,
-      //   animated: false,
-      // });
+
+      scrollViewRef.current.scrollTo({
+        y: newScrollPosition,
+        animated: true,
+      });
     }
   };
 
@@ -299,6 +371,7 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
       // Ensure final update of visible hours and animated zoom level
       const finalVisibleHours = scrollViewHeight / (HOUR_HEIGHT * zoomLevel);
       updateVisibleHours(finalVisibleHours);
+      setContentHeight(calcContentHeight());
 
       setIsPinching(false);
     } else if (nativeEvent.state === State.ACTIVE) {
@@ -371,6 +444,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
+  groupedImagesContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: -10,
+  },
+  groupedEntryImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 15,
+    marginLeft: -10,
+    borderWidth: 1,
+    borderColor: "white",
+  },
   timeMarkerText: {
     position: "absolute",
     width: 70,
@@ -395,17 +481,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   entryImage: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
     borderRadius: 15,
   },
   entryTitle: {
     fontSize: 14,
+    fontWeight: "bold",
     textAlign: "center",
   },
   entryTextContainer: {
     flex: 1,
     height: 36,
+    width: "100%",
+  },
+  groupedAvatarsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  groupedAvatar: {
+    width: 40,
+    height: 40,
+    borderWidth: 2,
+    borderRadius: 20,
+    marginLeft: -10,
+    borderColor: "white",
+  },
+  moreUsersIndicator: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.grey40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  moreUsersText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

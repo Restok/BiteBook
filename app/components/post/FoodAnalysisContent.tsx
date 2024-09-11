@@ -155,6 +155,9 @@ const FoodAnalysisContent: React.FC<FoodAnalysisContentProps> = ({
             renderItem={renderCarouselItem}
             width={300}
             height={460}
+            panGestureHandlerProps={{
+              activeOffsetX: [-5, 5],
+            }}
             mode="vertical-stack"
             modeConfig={{
               snapDirection: "left",
