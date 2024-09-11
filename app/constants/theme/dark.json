@@ -1,0 +1,38 @@
+{
+  "background-basic-color-1": "$color-basic-1100",
+  "background-basic-color-2": "$color-basic-1000",
+  "background-basic-color-3": "$color-basic-900",
+  "background-basic-color-4": "$color-basic-800",
+  "background-basic-color-5": "$color-primary-100",
+  "background-basic-color-6": "$color-secondary-100",
+  "background-basic-color-7": "$color-purple-100",
+  "background-basic-color-8": "$color-emerald-100",
+  "background-basic-color-9": "$color-light-100",
+  "background-basic-color-10": "$color-corn-100",
+  "background-basic-color-11": "$color-radical-100",
+  "background-basic-color-12": "$color-success-100",
+
+  "color-danger-default":"$color-danger-100",
+  "text-basic-color": "$color-basic-100",
+  "text-body-color": "$color-basic-300",
+  "text-white-color": "$color-basic-1100",
+  "text-control-color": "$color-basic-1100",
+  "text-black-color": "$color-basic-100",
+  "text-primary-color": "$color-primary-100",
+  "text-secondary-color": "$color-secondary-100",
+  "text-salmon-color": "$color-salmon-100",
+  "text-placeholder-color": "$color-basic-400",
+  "text-corn-color": "$color-corn-100",
+  "text-danger-color": "$color-danger-100",
+  "text-snow-color": "$color-basic-600",
+  "text-platinum-color": "$color-basic-400",
+  "text-success-color": "$color-success-100",
+  "text-grey-color": "$color-basic-800",
+  "icon-input-basic-color": "$color-basic-500",
+  "border-basic-color-1": "$color-basic-900",
+
+
+  "background-button-color": "$color-primary-100",
+  "background-button-transparent-color": "$color-primary-600"
+
+}

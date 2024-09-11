@@ -1,144 +1,279 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import {
   View,
   StyleSheet,
-  Modal,
   Image,
   TouchableOpacity,
   Dimensions,
-  SafeAreaView,
 } from "react-native";
 import { Text, Avatar, Colors } from "react-native-ui-lib";
-import { AntDesign } from "@expo/vector-icons";
+import { AntDesign, MaterialCommunityIcons } from "@expo/vector-icons";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
 import { LinearGradient } from "expo-linear-gradient";
+import { useJournalContext } from "../../contexts/JournalContext";
+import { useUserContext } from "../../contexts/UserContext";
+import auth from "@react-native-firebase/auth";
+import ConfirmationModal from "../utils/ConfirmationModal";
+import { deleteEntry } from "../../services/deleteEntry";
+import { useSharedValue } from "react-native-reanimated";
+import Dots from "../ui/Dots";
+import EmojiPicker, { EmojiType, se } from "rn-emoji-keyboard";
+import { updateReaction } from "../../services/updateReaction";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { RootStackParamList } from "../../types/navigation";
+import { StackNavigationProp } from "@react-navigation/stack";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+const SCREEN_HEIGHT = Dimensions.get("window").height;
 
 interface ExpandedPostOverlayProps {
-  visible: boolean;
   onClose: () => void;
-}
-
-interface CarouselItem {
-  imageUrl: string;
+  index: number;
 }
 
 const ExpandedPostOverlay: React.FC<ExpandedPostOverlayProps> = ({
-  visible,
   onClose,
+  index,
 }) => {
+  const { entries } = useJournalContext();
+  const { journalUsersById } = useUserContext();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [carouselItems] = useState<CarouselItem[]>([
-    { imageUrl: "https://placehold.co/400x800/png" },
-    { imageUrl: "https://placehold.co/400x800/png" },
-    { imageUrl: "https://placehold.co/400x800/png" },
-  ]);
-  const [title] = useState("Delicious Pizza Time!");
-  const [userName] = useState("Pizza Lover");
-  const [userAvatar] = useState("https://placehold.co/100x100/png");
+  const snapPoints = useMemo(() => ["25%", "50%", "75%"], []);
 
-  const carouselRef = useRef<ICarouselInstance>(null);
-
-  const renderItem = ({ item }: { item: CarouselItem }) => {
-    return <Image source={{ uri: item.imageUrl }} style={styles.image} />;
+  const progress = useSharedValue(0);
+  const currentUser = auth().currentUser;
+  const entry = entries[index];
+  const isSingleImage = entry.images.length === 1;
+  const [isEmojiPickerVisible, setIsEmojiPickerVisible] = useState(false);
+  const user = journalUsersById[entry.userId];
+  const isCurrentUserOwner = auth().currentUser?.uid === entry.userId;
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [reactionInProgress, setReactionInProgress] = useState(false);
+  const handleDeletePress = () => {
+    setIsDeleteModalVisible(true);
   };
+  const { selectedJournal, reloadSingleEntry } = useJournalContext();
+  const handleReaction = async (emoji: string) => {
+    if (reactionInProgress) return;
+    if (!currentUser || !selectedJournal) return;
+    setReactionInProgress(true);
 
-  const handlePrevious = () => {
-    if (carouselRef.current) {
-      carouselRef.current.prev({ animated: true });
+    try {
+      await updateReaction(entry.id, selectedJournal.id, emoji);
+      reloadSingleEntry(entry.id);
+    } catch (error) {
+      console.error("Error updating reaction:", error);
+    } finally {
+      setReactionInProgress(false);
     }
   };
 
-  const handleNext = () => {
-    if (carouselRef.current) {
-      carouselRef.current.next({ animated: true });
+  const { navigate } = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const handleFoodAnalysisPress = () => {
+    navigate("FoodAnalysis", { entryData: entry, index: index });
+  };
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteEntry(entry.id);
+      onClose();
+    } catch (error) {
+      console.error("Error deleting entry:", error);
     }
+    setIsDeleteModalVisible(false);
+  };
+  const renderItem = ({ item }: { item: string }) => {
+    return (
+      <View style={styles.imageContainer}>
+        <Image
+          source={{ uri: item }}
+          style={styles.image}
+          resizeMode="contain"
+        />
+      </View>
+    );
+  };
+
+  const renderReactions = () => {
+    if (!entry.reactions) return null;
+    if (!entry.reactions["❤️"]) {
+      entry.reactions["❤️"] = [];
+    }
+    return Object.entries(entry.reactions).map(([emoji, users]) => {
+      const isUserReacted = users.includes(currentUser?.uid || "");
+      return (
+        <TouchableOpacity
+          key={emoji}
+          style={[styles.reactionItem, isUserReacted && styles.activeReaction]}
+          onPress={() => handleReaction(emoji)}
+        >
+          <Text style={styles.emoji}>{emoji}</Text>
+          <Text style={styles.reactionCount}>{users.length}</Text>
+        </TouchableOpacity>
+      );
+    });
   };
 
   return (
-    <Modal animationType="fade" transparent={false} onRequestClose={onClose}>
-      <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <EmojiPicker
+        open={isEmojiPickerVisible}
+        onClose={function (): void {
+          setIsEmojiPickerVisible(false);
+        }}
+        onEmojiSelected={function (emoji: EmojiType): void {
+          setIsEmojiPickerVisible(false);
+          handleReaction(emoji.emoji);
+        }}
+        enableSearchBar={true}
+        enableRecentlyUsed={true}
+        enableSearchAnimation={false}
+        enableCategoryChangeAnimation={false}
+      />
+      <TouchableOpacity
+        style={styles.foodAnalysisButton}
+        onPress={() => {
+          handleFoodAnalysisPress();
+        }}
+      >
+        <MaterialCommunityIcons
+          name="star-four-points"
+          size={24}
+          color="white"
+        />
+      </TouchableOpacity>
+      <LinearGradient
+        colors={["rgba(0,0,0,0.7)", "transparent"]}
+        style={styles.topVignette}
+      >
+        <View style={styles.userInfo}>
+          <Avatar source={{ uri: user?.photoURL }} size={48} />
+          <Text style={styles.userName}>{user?.name}</Text>
+        </View>
+        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <AntDesign name="close" size={24} color="white" />
+        </TouchableOpacity>
+      </LinearGradient>
+      <Dots
+        translationValue={progress}
+        data={entry.images}
+        widthInterpolate={
+          SCREEN_WIDTH / entry.images.length -
+          2 * (entry.images.length - 1) -
+          12
+        }
+        widthDot={
+          SCREEN_WIDTH / entry.images.length -
+          2 * (entry.images.length - 1) -
+          12
+        }
+        style={styles.progress}
+      />
+      {isSingleImage ? (
+        <Image
+          source={{ uri: entry.images[0] }}
+          style={styles.singleImage}
+          resizeMode="contain"
+        />
+      ) : (
         <Carousel
           width={SCREEN_WIDTH}
-          height={Dimensions.get("window").height}
-          data={carouselItems}
+          data={entry.images}
           renderItem={renderItem}
           onSnapToItem={setActiveIndex}
-          ref={carouselRef}
-          scrollAnimationDuration={200}
-        />
-        <LinearGradient
-          colors={["rgba(0,0,0,0.7)", "transparent"]}
-          style={styles.topVignette}
-        >
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <AntDesign name="close" size={24} color="white" />
-          </TouchableOpacity>
-          <View style={styles.userInfo}>
-            <Avatar source={{ uri: userAvatar }} size={40} />
-            <Text style={styles.userName}>{userName}</Text>
-          </View>
-        </LinearGradient>
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.7)"]}
-          style={styles.bottomVignette}
-        >
-          <Text style={styles.title}>{title}</Text>
-          <View style={styles.reactionContainer}>
-            <TouchableOpacity style={styles.reactionButton}>
-              <AntDesign name="heart" size={24} color="white" />
-            </TouchableOpacity>
-            <Text style={styles.reactionCount}>15</Text>
-          </View>
-          <View style={styles.carouselControls}>
+          onProgressChange={(_, absoluteProgress) => {
+            progress.value = Math.abs(_);
+          }}
+          mode="horizontal-stack"
+          modeConfig={{
+            snapDirection: "left",
+            stackInterval: 18,
+          }}
+          style={styles.carousel}
+        ></Carousel>
+      )}
+      <LinearGradient
+        colors={["transparent", "rgba(0,0,0,0.7)"]}
+        style={styles.bottomVignette}
+      >
+        <Text style={styles.title}>{entry.title}</Text>
+        <View style={styles.actionsContainer}>
+          <View style={styles.reactionContainer}>{renderReactions()}</View>
+          <View style={styles.iconContainer}>
             <TouchableOpacity
-              onPress={handlePrevious}
-              style={styles.arrowButton}
+              style={styles.iconButton}
+              onPress={() => {
+                setIsEmojiPickerVisible(true);
+              }}
             >
-              <AntDesign name="left" size={24} color="white" />
+              <AntDesign name="smileo" size={24} color="white" />
             </TouchableOpacity>
-            <View style={styles.dotsContainer}>
-              {carouselItems.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.dot,
-                    index === activeIndex && styles.activeDot,
-                  ]}
-                />
-              ))}
-            </View>
-            <TouchableOpacity onPress={handleNext} style={styles.arrowButton}>
-              <AntDesign name="right" size={24} color="white" />
+            {isCurrentUserOwner && (
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={handleDeletePress}
+              >
+                <AntDesign name="delete" size={24} color="white" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.iconButton}>
+              <AntDesign name="link" size={24} color="white" />
             </TouchableOpacity>
           </View>
-        </LinearGradient>
-      </SafeAreaView>
-    </Modal>
+        </View>
+      </LinearGradient>
+
+      <ConfirmationModal
+        isVisible={isDeleteModalVisible}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setIsDeleteModalVisible(false)}
+        message="Are you sure you want to delete this post?"
+      />
+    </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.black,
+  },
+  foodAnalysisButton: {
+    position: "absolute",
+    right: 20,
+    top: 120,
+    backgroundColor: Colors.purple20,
+    borderRadius: 24,
+    padding: 12,
+    zIndex: 10,
+  },
+  progress: { position: "absolute", top: 40, left: 0, right: 0, zIndex: 2 },
+  carousel: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+  imageContainer: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
     backgroundColor: "black",
   },
   image: {
-    width: SCREEN_WIDTH,
+    width: "100%",
     height: "100%",
-    resizeMode: "cover",
   },
-  topVignette: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 100,
+  userInfo: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
+    zIndex: 10,
+  },
+  singleImage: {
+    width: SCREEN_WIDTH,
+    height: "100%",
+  },
+
+  userName: {
+    color: "white",
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: "bold",
   },
   bottomVignette: {
     position: "absolute",
@@ -146,62 +281,69 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 200,
-    justifyContent: "space-around",
+    justifyContent: "flex-end",
     padding: 20,
-    paddingTop: 45,
-    paddingBottom: 0,
   },
-  closeButton: {
-    padding: 10,
-  },
-  userInfo: {
+  topVignette: {
+    position: "absolute",
+    padding: 20,
+    paddingTop: 60,
     flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
     alignItems: "center",
-  },
-  userName: {
-    color: "white",
-    marginLeft: 10,
-    fontSize: 16,
+    zIndex: 1,
   },
 
   title: {
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+    marginBottom: 10,
   },
-  reactionContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  reactionButton: {
-    marginRight: 10,
-  },
-  reactionCount: {
-    color: "white",
-    fontSize: 16,
-  },
-  carouselControls: {
+  actionsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
   },
-  arrowButton: {
-    padding: 10,
-  },
-  dotsContainer: {
+  reactionContainer: {
     flexDirection: "row",
-    justifyContent: "center",
+    width: "50%",
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
-    marginHorizontal: 4,
+  reactionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 8,
   },
-  activeDot: {
-    backgroundColor: "white",
+  emoji: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  reactionCount: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+
+  iconContainer: {
+    flexDirection: "row",
+  },
+  iconButton: {
+    marginLeft: 20,
+  },
+  closeButton: {
+    zIndex: 10,
+  },
+  deleteButton: {
+    position: "absolute",
+    zIndex: 10,
+  },
+  activeReaction: {
+    backgroundColor: Colors.blue30,
   },
 });
 

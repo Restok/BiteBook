@@ -10,6 +10,8 @@ import {
 import { Text, Colors, Button } from "react-native-ui-lib";
 import * as ImagePicker from "expo-image-picker";
 import { createJournal } from "../../services/createJournal";
+import { Icon, TopNavigation } from "@ui-kitten/components";
+import { NavigationAction } from "../ui";
 
 interface CreateJournalOverlayProps {
   onClose: () => void;
@@ -25,7 +27,6 @@ const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
   const [newJournal, setNewJournal] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const handleImagePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
@@ -50,9 +51,18 @@ const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={onClose}>
-        <Text style={styles.backButtonText}>←</Text>
-      </TouchableOpacity>
+      <TopNavigation
+        style={{ backgroundColor: "transparent" }}
+        accessoryLeft={() => {
+          return (
+            <NavigationAction
+              icon={"arrow-back-outline"}
+              size="giant"
+              tintColor={Colors.grey20}
+            />
+          );
+        }}
+      />
       <Text style={styles.title}>Create your new journal</Text>
       <Text style={styles.subtitle}>
         Share what you've been eating to each other. Set group goals and keep
@@ -91,16 +101,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     paddingTop: 40,
     paddingHorizontal: 20,
-  },
-  backButton: {
-    position: "absolute",
-    top: 40,
-    left: 20,
-    zIndex: 1,
-  },
-  backButtonText: {
-    fontSize: 24,
-    fontWeight: "bold",
   },
   title: {
     fontSize: 24,

@@ -6,8 +6,11 @@ import {
   Image,
   Dimensions,
   TouchableOpacity,
+  FlatList,
 } from "react-native";
-import { Text } from "react-native-ui-lib";
+import { Text, Avatar, Colors } from "react-native-ui-lib";
+import { useUserContext } from "../contexts/UserContext";
+
 import {
   PinchGestureHandler,
   State,
@@ -16,6 +19,7 @@ import {
 import { useDebouncedCallback } from "use-debounce";
 import { Entry } from "../types/entry";
 import { useJournalContext } from "../contexts/JournalContext";
+import { Container } from "./ui";
 
 interface TimeMarkersProps {
   currentTime: number;
@@ -23,106 +27,90 @@ interface TimeMarkersProps {
   intervalHours: number;
 }
 
-const TimeMarkers: React.FC<TimeMarkersProps> = React.memo(
-  ({ currentTime, zoomLevel, intervalHours }) => {
-    const hourToDate = (hour: number) => {
-      const date = new Date(currentTime);
-      date.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
-      return date.getTime();
-    };
+// const TimeMarkers: React.FC<TimeMarkersProps> = React.memo(
+//   ({ currentTime, zoomLevel, intervalHours }) => {
+//     const hourToDate = (hour: number) => {
+//       const date = new Date(currentTime);
+//       date.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
+//       return date.getTime();
+//     };
+//     const getEntryPosition = useCallback(
+//       (timestamp: number) => {
+//         "worklet";
+//         const minutesDiff = (currentTime - timestamp) / (60 * 1000);
+//         return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
+//       },
+//       [currentTime, zoomLevel]
+//     );
+//     const getDateString = (timestamp: number) => {
+//       return new Date(timestamp)
+//         .toLocaleTimeString([], {
+//           hour: "2-digit",
+//           minute: "2-digit",
+//         })
+//         .replace(/\s/g, "");
+//     };
 
-    const getEntryPosition = useCallback(
-      (timestamp: number) => {
-        "worklet";
-        const minutesDiff = (currentTime - timestamp) / (60 * 1000);
-        return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
-      },
-      [currentTime, zoomLevel]
-    );
-
-    const markers = [];
-    for (let i = 0; i < 24; i += 1) {
-      const markerTime = hourToDate(i);
-      const hoursDiff = (currentTime - markerTime) / (1000 * 60 * 60);
-
-      // const animatedStyle = useAnimatedStyle(() => {
-      //   const isVisible = i % intervalHours === 0 && hoursDiff >= 0;
-      //   if (isVisible) {
-      //     return {
-      //       transform: [
-      //         {
-      //           translateY: withTiming(getEntryPosition(markerTime), {
-      //             duration: 16,
-      //           }),
-      //         },
-      //       ],
-      //       opacity: 1,
-      //     };
-      //   }
-      //   return {
-      //     transform: [{ translateY: getEntryPosition(markerTime) }],
-      //     opacity: 0,
-      //   };
-      // });
-
-      markers.push(
-        <View
-          key={i}
-          style={[
-            styles.timeMarker,
-            {
-              top: getEntryPosition(markerTime),
-              opacity: i % intervalHours === 0 && hoursDiff >= 0 ? 1 : 0,
-            },
-          ]}
-        >
-          <Text style={styles.timeMarkerText}>
-            {new Date(markerTime).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
-        </View>
-      );
-    }
-    markers.push(
-      <View
-        key="now"
-        style={[
-          styles.timeMarker,
-          {
-            top: getEntryPosition(currentTime),
-            opacity: 1,
-          },
-        ]}
-      >
-        <Text style={styles.timeMarkerText}>
-          {new Date(currentTime).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
-      </View>
-    );
-
-    return <>{markers}</>;
-  }
-);
-TimeMarkers.displayName = "TimeMarkers";
+//     const markers = [];
+//     for (let i = 0; i < 24; i += 1) {
+//       const markerTime = hourToDate(i);
+//       const hoursDiff = (currentTime - markerTime) / (1000 * 60 * 60);
+//       const isVisible =
+//         i % intervalHours === 0 &&
+//         hoursDiff >= 0 &&
+//         hoursDiff > intervalHours / 2;
+//       if (hoursDiff < 0) break;
+//       if (!isVisible) continue;
+//       const dateString = getDateString(markerTime);
+//       markers.push(
+//         <View
+//           key={i}
+//           style={[
+//             styles.timeMarker,
+//             {
+//               transform: [{ translateY: getEntryPosition(markerTime) }],
+//               opacity: isVisible ? 1 : 0,
+//             },
+//           ]}
+//         >
+//           <Text style={styles.timeMarkerText}>{dateString}</Text>
+//         </View>
+//       );
+//     }
+//     const dateString = getDateString(currentTime);
+//     markers.push(
+//       <View
+//         key="now"
+//         style={[
+//           styles.timeMarker,
+//           {
+//             top: getEntryPosition(currentTime),
+//             opacity: 1,
+//           },
+//         ]}
+//       >
+//         <Text style={styles.timeMarkerText}>{dateString}</Text>
+//       </View>
+//     );
+//     return <>{markers}</>;
+//   }
+// );
+// TimeMarkers.displayName = "TimeMarkers";
 
 const HOUR_HEIGHT = 120;
-const INITIAL_HOURS_SHOWN = 8;
+const INITIAL_HOURS_SHOWN = 24;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const LINE_LEFT_MARGIN = Math.max(SCREEN_WIDTH * 0.2, 80);
 
 type VerticalTimelineProps = {
-  onEntryPress: (entry: Entry) => void;
+  onEntryPress: (index: number) => void;
 };
 
 const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
   onEntryPress,
 }) => {
-  const [zoomLevel, setZoomLevel] = useState(0.5);
+  const { journalUsersById } = useUserContext();
+
   const [visibleHours, setVisibleHours] = useState(INITIAL_HOURS_SHOWN);
   const [isPinching, setIsPinching] = useState(false);
 
@@ -130,7 +118,6 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
     //Round to nearest 1
     setVisibleHours(Math.round(newVisibleHours));
   };
-
   const scrollViewRef = useRef<ScrollView>(null);
   const pinchRef = useRef(null);
   const nativeViewRef = useRef(null);
@@ -138,29 +125,28 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
   const scrollOffset = useRef(0);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [scrollViewHeight, setScrollViewHeight] = useState(600);
+  const { entries, selectedDate } = useJournalContext();
 
   const calcHours = () => {
-    const date = new Date();
-    return date.getHours() + date.getMinutes() / 60 + 1;
+    if (selectedDate.getDate() !== new Date().getDate()) {
+      return 24;
+    }
+    return selectedDate.getHours() + selectedDate.getMinutes() / 60 + 1;
   };
 
   const [totalHoursLoaded, setTotalHoursLoaded] = useState(calcHours());
-
-  const calcContentHeight = () => {
-    return totalHoursLoaded * HOUR_HEIGHT * zoomLevel;
-  };
-  const [contentHeight, setContentHeight] = useState(calcContentHeight());
-  const lastPinchHeight = useRef(contentHeight);
-
-  const lastContentHeight = useRef(contentHeight);
-
-  const onScrollViewLayout = (event) => {
-    const { height } = event.nativeEvent.layout;
-    setScrollViewHeight(height);
-  };
-  const { entries } = useJournalContext();
+  const [zoomLevel, setZoomLevel] = useState(
+    600 / (totalHoursLoaded * HOUR_HEIGHT)
+  );
 
   useEffect(() => {
+    if (selectedDate.getDate() !== new Date().getDate()) {
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      setCurrentTime(endOfDay.getTime());
+      setTotalHoursLoaded(24);
+      return;
+    }
     const now = Date.now();
     setCurrentTime(now);
 
@@ -179,7 +165,20 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
 
     // Clean up the interval on component unmount
     return () => clearInterval(intervalId);
-  }, []);
+  }, [selectedDate]);
+
+  const calcContentHeight = () => {
+    return totalHoursLoaded * HOUR_HEIGHT * zoomLevel;
+  };
+  const [contentHeight, setContentHeight] = useState(calcContentHeight());
+  const lastPinchHeight = useRef(contentHeight);
+
+  const lastContentHeight = useRef(contentHeight);
+
+  const onScrollViewLayout = (event) => {
+    const { height } = event.nativeEvent.layout;
+    setScrollViewHeight(height);
+  };
 
   useEffect(() => {
     setContentHeight(calcContentHeight());
@@ -196,57 +195,104 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
       return 0.5;
     }
   };
+  const hourToDate = (hour: number) => {
+    const date = new Date(currentTime);
+    date.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
+    return date.getTime();
+  };
+  const getEntryPosition = useCallback(
+    (timestamp: number) => {
+      "worklet";
+      const minutesDiff = (currentTime - timestamp) / (60 * 1000);
+      return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
+    },
+    [currentTime, zoomLevel]
+  );
+  const getDateString = (timestamp: number) => {
+    return new Date(timestamp)
+      .toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+      .replace(/\s/g, "");
+  };
 
-  const renderEntries = () => {
-    return entries.map((entry) => (
-      <View key={entry.id}>
-        <View
-          style={[styles.entry, { top: getEntryPosition(entry.timestamp) }]}
-        >
-          <View style={styles.entryDot} />
-          <View style={styles.entryLine} />
-          <TouchableOpacity
-            style={styles.entryContent}
-            onPress={() => onEntryPress(entry)}
-          >
-            <Image
-              source={{ uri: entry.images[0] }}
-              style={styles.entryImage}
-            />
-            <Text style={styles.entryTitle}>{entry.title}</Text>
-          </TouchableOpacity>
-        </View>
+  const markers = [];
+  const intervalHours = getIntervalHours();
+  for (let i = 0; i < 24; i += 1) {
+    const markerTime = hourToDate(i);
+    // const hoursDiff = (currentTime - markerTime) / (1000 * 60 * 60);
+    const isVisible = i % intervalHours === 0;
+    // hoursDiff >= 0 &&
+    // hoursDiff > intervalHours / 2;
+    // if (hoursDiff < 0) break;
+    if (!isVisible) continue;
+    const dateString = getDateString(markerTime);
+    markers.push(
+      <View
+        key={i}
+        style={[
+          styles.timeMarker,
+          {
+            height: HOUR_HEIGHT * zoomLevel * intervalHours,
+          },
+        ]}
+      >
+        <Text style={styles.timeMarkerText}>{dateString}</Text>
       </View>
-    ));
+    );
+  }
+  const renderItem = ({ item }: { item }) => {
+    return item;
   };
+  // const renderEntries = () => {
+  //   return entries.map((entry, index) => {
+  //     const user = journalUsersById[entry.userId];
+  //     return (
+  //       <View key={entry.id}>
+  //         <View
+  //           style={[styles.entry, { top: getEntryPosition(entry.timestamp) }]}
+  //         >
+  //           <Avatar source={{ uri: user?.photoURL }} size={30} />
+  //           <TouchableOpacity
+  //             style={styles.entryTextContainer}
+  //             onPress={() => onEntryPress(index)}
+  //           >
+  //             <Text style={styles.entryTitle} numberOfLines={1}>
+  //               {entry.title}
+  //             </Text>
+  //             <View style={styles.entryLine} />
+  //           </TouchableOpacity>
+  //           <TouchableOpacity
+  //             style={styles.entryContent}
+  //             onPress={() => onEntryPress(index)}
+  //           >
+  //             <Image
+  //               source={{ uri: entry.images[0] }}
+  //               style={styles.entryImage}
+  //             />
+  //           </TouchableOpacity>
+  //         </View>
+  //       </View>
+  //     );
+  //   });
+  // };
 
-  const getEntryPosition = (timestamp: number) => {
-    const minutesDiff = (currentTime - timestamp) / (60 * 1000);
-    return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
-  };
+  // const getEntryPosition = (timestamp: number) => {
+  //   const minutesDiff = (currentTime - timestamp) / (60 * 1000);
+  //   return (minutesDiff / 60) * HOUR_HEIGHT * zoomLevel;
+  // };
 
   const onPinchGestureEvent = ({ nativeEvent }) => {
     const { scale, focalY } = nativeEvent;
-    const diff = (scale - lastPinchScale.current) * 1.5;
+    const diff = (scale - lastPinchScale.current) * 2;
     const zoomMin = scrollViewHeight / (totalHoursLoaded * HOUR_HEIGHT);
     const newZoomLevel = Math.max(zoomMin, Math.min(zoomLevel * (1 + diff), 3));
     setZoomLevel(newZoomLevel);
-    const newContentHeight = calcContentHeight();
-
-    lastContentHeight.current = newContentHeight;
-
+    console.log(newZoomLevel);
     lastPinchScale.current = scale;
     const newVisibleHours = scrollViewHeight / (HOUR_HEIGHT * newZoomLevel);
     updateVisibleHours(newVisibleHours);
-
-    if (scrollViewRef.current) {
-      const newScrollPosition =
-        (scrollOffset.current * newContentHeight) / lastPinchHeight.current;
-      scrollViewRef.current.scrollTo({
-        y: newScrollPosition,
-        animated: false,
-      });
-    }
   };
 
   const onPinchHandlerStateChange = ({ nativeEvent }) => {
@@ -258,7 +304,6 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
       // Ensure final update of visible hours and animated zoom level
       const finalVisibleHours = scrollViewHeight / (HOUR_HEIGHT * zoomLevel);
       updateVisibleHours(finalVisibleHours);
-      setContentHeight(calcContentHeight());
 
       setIsPinching(false);
     } else if (nativeEvent.state === State.ACTIVE) {
@@ -273,43 +318,30 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
       scrollOffset.current = nativeEvent.contentOffset.y;
     }
   };
+
   return (
-    <PinchGestureHandler
-      ref={pinchRef}
-      onGestureEvent={onPinchGestureEvent}
-      onHandlerStateChange={onPinchHandlerStateChange}
-      simultaneousHandlers={nativeViewRef}
-    >
-      <NativeViewGestureHandler
-        ref={nativeViewRef}
-        simultaneousHandlers={pinchRef}
+    <Container level="1" style={styles.container}>
+      <PinchGestureHandler
+        ref={pinchRef}
+        onGestureEvent={onPinchGestureEvent}
+        onHandlerStateChange={onPinchHandlerStateChange}
+        simultaneousHandlers={nativeViewRef}
       >
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.container}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
-          onLayout={onScrollViewLayout}
-          scrollEnabled={!isPinching}
+        <NativeViewGestureHandler
+          ref={nativeViewRef}
+          simultaneousHandlers={pinchRef}
         >
-          <View style={[styles.timeline, { height: contentHeight }]}>
-            <View style={styles.verticalLine} />
-            <TimeMarkers
-              currentTime={currentTime}
-              zoomLevel={zoomLevel}
-              intervalHours={getIntervalHours()}
-            />
-            {renderEntries()}
-          </View>
-        </ScrollView>
-      </NativeViewGestureHandler>
-    </PinchGestureHandler>
+          <FlatList data={markers} renderItem={renderItem}></FlatList>
+        </NativeViewGestureHandler>
+      </PinchGestureHandler>
+    </Container>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    // borderRadius: 20,
+    // paddingHorizontal: 10,
   },
   timeline: {
     width: "100%",
@@ -323,53 +355,39 @@ const styles = StyleSheet.create({
     width: 4,
     backgroundColor: "#666464",
   },
-  timeMarker: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-  },
+  timeMarker: {},
   timeMarkerText: {
-    position: "absolute",
-    width: 70,
-    textAlign: "right",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 16,
   },
   entry: {
     position: "absolute",
-    left: LINE_LEFT_MARGIN - 5,
+    left: LINE_LEFT_MARGIN - 12,
     right: 10,
     flexDirection: "row",
     alignItems: "center",
   },
-  entryDot: {
-    width: 10,
-    left: 2,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#007AFF",
-  },
+
   entryLine: {
     height: 2,
-    flex: 1,
     backgroundColor: "#007AFF",
   },
   entryContent: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "white",
-    padding: 5,
-    borderRadius: 5,
-    marginLeft: 5,
   },
   entryImage: {
-    width: 30,
-    height: 30,
+    width: 40,
+    height: 40,
     borderRadius: 15,
-    marginRight: 5,
   },
   entryTitle: {
-    fontSize: 12,
+    fontSize: 14,
+    textAlign: "center",
+  },
+  entryTextContainer: {
+    flex: 1,
+    height: 36,
   },
 });
 

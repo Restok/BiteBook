@@ -14,7 +14,6 @@ export async function loadEntries(
   endOfDay.setHours(23, 59, 59, 999);
 
   // Query the journalEntries collection
-  console.log(journalId);
   const journalEntriesSnapshot = await db
     .collection("journalEntries")
     .doc(journalId)
@@ -44,8 +43,10 @@ export async function loadEntries(
       id: doc.id,
       ...data,
       timestamp: data.timestamp.toMillis(),
+      reactions: data.reactions?.[journalId] || {},
     } as Entry;
   });
 
+  entries.sort((a, b) => a.timestamp - b.timestamp);
   return entries;
 }

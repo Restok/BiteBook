@@ -33,17 +33,17 @@ const styles = StyleSheet.create({
   pickerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.green40,
+    backgroundColor: Colors.$iconPrimaryLight,
     padding: 5,
     marginVertical: 15,
-    borderRadius: 5,
+    borderRadius: 15,
     minWidth: "40%",
   },
   avatar: {
     marginRight: 10,
   },
   pickerText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: "bold",
     color: Colors.white,
     // textDecorationLine: "underline",

@@ -15,7 +15,16 @@ import ExpandedPostScreen from "./app/screens/ExpandedPostScreen";
 import JournalCreatedScreen from "./app/screens/JournalCreatedScreen";
 import { RootStackParamList } from "./app/types/navigation";
 import { JournalProvider } from "./app/contexts/JournalContext";
-
+import { UserProvider } from "./app/contexts/UserContext";
+import { ApplicationProvider, IconRegistry } from "@ui-kitten/components";
+import * as eva from "@eva-design/eva";
+import { default as darkTheme } from "./app/constants/theme/dark.json";
+import { default as lightTheme } from "./app/constants/theme/light.json";
+import { default as customTheme } from "./app/constants/theme/appTheme.json";
+import { default as customMapping } from "./app/constants/theme/mapping.json";
+import { EvaIconsPack } from "@ui-kitten/eva-icons";
+import FoodAnalysisScreen from "./app/screens/FoodAnalysisScreen";
+import LeaderboardScreen from "./app/screens/LeaderboardScreen";
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
 const TabNavigator = () => (
@@ -33,6 +42,7 @@ const App: React.FC = () => {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState(null);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [theme, setTheme] = React.useState<"light" | "dark">("light");
 
   useEffect(() => {
     configureGoogleSignIn();
@@ -77,44 +87,66 @@ const App: React.FC = () => {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <JournalProvider>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {!user ? (
-              <Stack.Screen name="Login" component={LoginScreen} />
-            ) : !onboardingComplete ? (
-              <Stack.Screen name="Onboarding">
-                {(props) => (
-                  <OnboardingScreen
-                    {...props}
-                    onComplete={() => setOnboardingComplete(true)}
-                  />
+      <IconRegistry icons={[EvaIconsPack]} />
+      <ApplicationProvider
+        {...eva}
+        theme={
+          theme === "light"
+            ? { ...eva.light, ...customTheme, ...lightTheme }
+            : { ...eva.dark, ...customTheme, ...darkTheme }
+        }
+        customMapping={customMapping}
+      >
+        <JournalProvider>
+          <UserProvider>
+            <NavigationContainer>
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                {!user ? (
+                  <Stack.Screen name="Login" component={LoginScreen} />
+                ) : !onboardingComplete ? (
+                  <Stack.Screen name="Onboarding">
+                    {(props) => (
+                      <OnboardingScreen
+                        {...props}
+                        onComplete={() => setOnboardingComplete(true)}
+                      />
+                    )}
+                  </Stack.Screen>
+                ) : (
+                  <>
+                    {/* <Stack.Screen name="Main" component={TabNavigator} /> */}
+                    <Stack.Screen name="Home" component={HomeScreen} />
+                    <Stack.Screen
+                      name="Leaderboard"
+                      component={LeaderboardScreen}
+                    />
+                    <Stack.Screen
+                      name="CreateJournal"
+                      component={CreateJournalScreen}
+                    />
+                    <Stack.Screen
+                      name="ExpandBitebook"
+                      component={ExpandBitebookScreen}
+                    />
+                    <Stack.Screen
+                      name="ExpandedPost"
+                      component={ExpandedPostScreen}
+                    />
+                    <Stack.Screen
+                      name="FoodAnalysis"
+                      component={FoodAnalysisScreen}
+                    />
+                    <Stack.Screen
+                      name="JournalCreated"
+                      component={JournalCreatedScreen}
+                    />
+                  </>
                 )}
-              </Stack.Screen>
-            ) : (
-              <>
-                <Stack.Screen name="Main" component={TabNavigator} />
-                <Stack.Screen
-                  name="CreateJournal"
-                  component={CreateJournalScreen}
-                />
-                <Stack.Screen
-                  name="ExpandBitebook"
-                  component={ExpandBitebookScreen}
-                />
-                <Stack.Screen
-                  name="ExpandedPost"
-                  component={ExpandedPostScreen}
-                />
-                <Stack.Screen
-                  name="JournalCreated"
-                  component={JournalCreatedScreen}
-                />
-              </>
-            )}
-          </Stack.Navigator>
-        </NavigationContainer>
-      </JournalProvider>
+              </Stack.Navigator>
+            </NavigationContainer>
+          </UserProvider>
+        </JournalProvider>
+      </ApplicationProvider>
     </GestureHandlerRootView>
   );
 };

@@ -17,6 +17,11 @@ import { Journal } from "../types/journal";
 import { RootStackParamList } from "../types/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import JournalSettingsModal from "../components/journals/JournalSettingsModal";
+import { Container } from "../components/ui";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
+import { se } from "rn-emoji-keyboard";
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -27,22 +32,31 @@ const HomeScreen: React.FC = () => {
     setSelectedJournal,
     loadJournals,
     loadEntriesForDate,
+    setSelectedDate,
+    selectedDate,
   } = useJournalContext();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isGroupPickerOverlayVisible, setGroupPickerOverlayVisible] =
     useState(false);
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
-
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const handleDateChange = useCallback(
+    (event: DateTimePickerEvent) => {
+      setDatePickerVisible(false);
+      const date = event.nativeEvent.timestamp;
+      if (date) {
+        setSelectedDate(new Date(date));
+      }
+    },
+    [setSelectedDate]
+  );
+  const openDatePicker = useCallback(() => {
+    setDatePickerVisible(true);
+  }, []);
   const handleCloseSettingsModal = useCallback(() => {
     setIsSettingsModalVisible(false);
   }, []);
-
-  const currentDate = new Date().toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    weekday: "short",
-  });
 
   useFocusEffect(
     useCallback(() => {
@@ -78,17 +92,16 @@ const HomeScreen: React.FC = () => {
   }, []);
 
   const handleSubmitPost = useCallback(() => {
-    setIsModalVisible(false);
     loadEntriesForDate(new Date());
+    setIsModalVisible(false);
   }, []);
   const handleSettingsPress = useCallback(() => {
-    // TODO: Implement settings navigation or modal
     setIsSettingsModalVisible(true);
   }, []);
 
   const handleEntryPress = useCallback(
-    (post) => {
-      navigation.navigate("ExpandedPost", { post });
+    (index) => {
+      navigation.navigate("ExpandedPost", { index });
     },
     [navigation]
   );
@@ -106,21 +119,54 @@ const HomeScreen: React.FC = () => {
     setGroupPickerOverlayVisible(false);
   }, []);
 
+  const handlePodiumPress = useCallback(() => {
+    navigation.navigate("Leaderboard");
+  }, [navigation]);
+
   return (
-    <View style={styles.container}>
-      <View style={styles.topBar}>
-        <GroupPicker
-          selectedJournal={selectedJournal}
-          onOpenPicker={handleOpenGroupPicker}
-        />
-        <TouchableOpacity onPress={handleSettingsPress}>
-          <Ionicons name="settings-outline" size={24} color={Colors.primary} />
-        </TouchableOpacity>
-      </View>
+    <Container>
       <View style={styles.listContainer}>
-        <Text text40BL style={styles.dateText}>
-          {currentDate}
-        </Text>
+        <View style={styles.topBar}>
+          <GroupPicker
+            selectedJournal={selectedJournal}
+            onOpenPicker={handleOpenGroupPicker}
+          />
+          <TouchableOpacity onPress={handlePodiumPress}>
+            <Ionicons name="podium-outline" size={24} color={Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSettingsPress}>
+            <Ionicons
+              name="settings-outline"
+              size={24}
+              color={Colors.primary}
+            />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.dateContainer}>
+          <Text text40BL style={styles.dateText}>
+            {selectedDate.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              weekday: "short",
+            })}
+          </Text>
+          <TouchableOpacity onPress={openDatePicker}>
+            <Ionicons
+              name="calendar-outline"
+              size={24}
+              color={Colors.primary}
+            />
+          </TouchableOpacity>
+          {datePickerVisible && (
+            <DateTimePicker
+              mode="date"
+              value={selectedDate}
+              onChange={handleDateChange}
+              style={styles.datePicker}
+            />
+          )}
+        </View>
+
         <VerticalTimeline onEntryPress={handleEntryPress} />
       </View>
       <CreatePostModal
@@ -153,28 +199,31 @@ const HomeScreen: React.FC = () => {
           onJournalLeft={handleJournalLeft}
         />
       )}
-    </View>
+    </Container>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 20,
-    paddingHorizontal: 20,
   },
   listContainer: {
     flex: 1,
-    paddingLeft: 20,
+    paddingHorizontal: 20,
+  },
+  dateContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
   },
   dateText: {
     textAlign: "left",
-    paddingBottom: 25,
+  },
+  datePicker: {
+    width: 120,
   },
   addButton: {
     position: "absolute",

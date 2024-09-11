@@ -64,7 +64,7 @@ const JournalSelectionModal: React.FC<JournalSelectionModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        <Text style={styles.title}>Select Journals</Text>
+        <Text style={styles.title}>Where would you like to post?</Text>
         <ScrollView style={styles.journalList}>
           {journals.map((journal) => (
             <TouchableOpacity
@@ -104,13 +104,13 @@ const JournalSelectionModal: React.FC<JournalSelectionModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 35,
     backgroundColor: Colors.white,
   },
   title: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 30,
   },
   journalList: {
     flex: 1,
@@ -137,13 +137,15 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   selectButton: {
-    backgroundColor: Colors.blue30,
+    backgroundColor: Colors.$iconPrimaryLight,
     padding: 10,
+    width: "48%",
     borderRadius: 5,
   },
   buttonText: {
     color: Colors.white,
     fontWeight: "bold",
+    textAlign: "center",
   },
   submitButton: {
     padding: 15,

@@ -13,8 +13,8 @@ const ExpandedPostScreen: React.FC<ExpandedPostScreenProps> = ({
   route,
 }) => {
   const onClose = () => navigation.goBack();
-
-  return <ExpandedPostOverlay onClose={onClose} />;
+  const index = route.params.index;
+  return <ExpandedPostOverlay onClose={onClose} index={index} />;
 };
 
 export default ExpandedPostScreen;

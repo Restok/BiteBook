@@ -16,18 +16,25 @@ export async function createEntry(entry: {
 
   const db = firestore();
   const batch = db.batch();
-
-  // Create a new entry document
   const entryRef = db.collection("entries").doc();
+  // Upload images
+  const imageUrls = await Promise.all(
+    entry.images.map(async (imageUri, index) => {
+      const reference = storage().ref(`entries/${entryRef.id}/image${index}`);
+      await reference.putFile(imageUri);
+      return await reference.getDownloadURL();
+    })
+  );
   const entryData = {
+    id: entryRef.id,
     userId: user.uid,
     title: entry.title,
-    entryType: entry.type,
+    entryType: entry.type.toLowerCase(),
     createdAt: firestore.FieldValue.serverTimestamp(),
     updatedAt: firestore.FieldValue.serverTimestamp(),
     timestamp: firestore.Timestamp.fromDate(entry.time),
     journals: entry.journals,
-    images: [], // We'll update this after uploading images
+    images: imageUrls,
   };
   batch.set(entryRef, entryData);
 
@@ -38,22 +45,14 @@ export async function createEntry(entry: {
       .doc(journalId)
       .collection("entries")
       .doc(entryRef.id);
-    batch.set(journalEntryRef, { createdAt: entryData.createdAt });
+    batch.set(journalEntryRef, {
+      createdAt: entryData.createdAt,
+      timestamp: entryData.timestamp,
+    });
   });
 
   // Commit the batch write
   await batch.commit();
-
-  // Upload images
-  const imageUrls = await Promise.all(
-    entry.images.map(async (imageUri, index) => {
-      const reference = storage().ref(`entries/${entryRef.id}/image${index}`);
-      await reference.putFile(imageUri);
-      return await reference.getDownloadURL();
-    })
-  );
-
-  await entryRef.update({ images: imageUrls });
 
   return entryRef.id;
 }

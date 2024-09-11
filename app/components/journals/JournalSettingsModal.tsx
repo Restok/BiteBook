@@ -23,7 +23,6 @@ const JournalSettingsModal: React.FC<JournalSettingsModalProps> = ({
       onJournalLeft();
       onClose();
     } catch (error) {
-      console.error("Error leaving journal:", error);
       // TODO: Show error message to user
     }
   };

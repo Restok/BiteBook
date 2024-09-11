@@ -1,3 +1,4 @@
+import { Entry } from "./entry";
 import { Journal } from "./journal";
 
 export type RootStackParamList = {
@@ -7,6 +8,8 @@ export type RootStackParamList = {
   ExpandBitebook: undefined;
   Login: undefined;
   Onboarding: undefined;
-  ExpandedPost: { post: any };
+  ExpandedPost: { index: number };
   JournalCreated: { journal: Journal };
+  FoodAnalysis: { entryData: Entry; index: number };
+  Leaderboard: undefined;
 };

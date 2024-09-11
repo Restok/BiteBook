@@ -15,6 +15,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import JournalSelectionModal from "./JournalSelectionModal";
 import { createEntry } from "../../services/createEntry";
 import { Entry } from "../../types/entry";
+import { compressImage } from "../../utils/compressImage";
 
 interface CreatePostModalProps {
   visible: boolean;
@@ -44,7 +45,10 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
     });
 
     if (!result.canceled) {
-      setImages([...images, ...result.assets.map((asset) => asset.uri)]);
+      const compressedImages = await Promise.all(
+        result.assets.map((asset) => compressImage(asset.uri))
+      );
+      setImages([...images, ...compressedImages]);
     }
   };
 
@@ -248,8 +252,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   imageContainer: {
-    borderWidth: 1,
-    borderColor: Colors.grey70,
+    borderWidth: 2,
+    borderColor: Colors.dark,
     borderRadius: 8,
     padding: 10,
     marginBottom: 20,
@@ -310,8 +314,8 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   input: {
-    borderWidth: 1,
-    borderColor: Colors.grey70,
+    borderWidth: 2,
+    borderColor: Colors.dark,
     borderRadius: 8,
     padding: 10,
     marginBottom: 20,
@@ -326,8 +330,8 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   timePickerButton: {
-    borderWidth: 1,
-    borderColor: Colors.grey70,
+    borderWidth: 2,
+    borderColor: Colors.dark,
     borderRadius: 8,
     padding: 10,
     marginBottom: 20,

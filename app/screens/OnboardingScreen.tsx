@@ -12,6 +12,7 @@ import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
 import storage from "@react-native-firebase/storage";
 import { createJournal } from "../services/createJournal";
+import { compressImage } from "../utils/compressImage";
 
 const OnboardingScreen: React.FC<{ onComplete: () => void }> = ({
   onComplete,
@@ -28,7 +29,8 @@ const OnboardingScreen: React.FC<{ onComplete: () => void }> = ({
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setProfilePicture(result.assets[0]);
+      const compressedImage = await compressImage(result.assets[0].uri);
+      setProfilePicture(compressedImage);
     }
   };
 
@@ -38,7 +40,7 @@ const OnboardingScreen: React.FC<{ onComplete: () => void }> = ({
       let photoURL = "";
       if (profilePicture) {
         const reference = storage().ref(`profilePictures/${user.uid}`);
-        await reference.putFile(profilePicture.uri);
+        await reference.putFile(profilePicture);
         photoURL = await reference.getDownloadURL();
       }
 
@@ -46,7 +48,7 @@ const OnboardingScreen: React.FC<{ onComplete: () => void }> = ({
         name: name,
         photoURL: photoURL,
         createdAt: firestore.FieldValue.serverTimestamp(),
-        groupIds: [],
+        journals: [],
       });
 
       await user.updateProfile({ displayName: name, photoURL });
