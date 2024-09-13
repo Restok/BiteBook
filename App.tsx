@@ -25,6 +25,9 @@ import { default as customMapping } from "./app/constants/theme/mapping.json";
 import { EvaIconsPack } from "@ui-kitten/eva-icons";
 import FoodAnalysisScreen from "./app/screens/FoodAnalysisScreen";
 import LeaderboardScreen from "./app/screens/LeaderboardScreen";
+import JoinJournalScreen from "./app/screens/JoinJournalScreen";
+import EnterInviteCodeScreen from "./app/screens/EnterInviteCodeScreen";
+import UserStatsScreen from "./app/screens/UserStatsScreen";
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator<RootStackParamList>();
 const TabNavigator = () => (
@@ -119,6 +122,18 @@ const App: React.FC = () => {
                     <Stack.Screen
                       name="Leaderboard"
                       component={LeaderboardScreen}
+                    />
+                    <Stack.Screen
+                      name="UserStats"
+                      component={UserStatsScreen}
+                    />
+                    <Stack.Screen
+                      name="JoinJournal"
+                      component={JoinJournalScreen}
+                    />
+                    <Stack.Screen
+                      name="EnterInviteCode"
+                      component={EnterInviteCodeScreen}
                     />
                     <Stack.Screen
                       name="CreateJournal"

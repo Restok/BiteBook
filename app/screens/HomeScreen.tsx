@@ -16,12 +16,10 @@ import GroupPickerOverlay from "../components/journals/GroupPickerOverlay";
 import { Journal } from "../types/journal";
 import { RootStackParamList } from "../types/navigation";
 import { Ionicons } from "@expo/vector-icons";
-import JournalSettingsModal from "../components/journals/JournalSettingsModal";
 import { Container } from "../components/ui";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import { se } from "rn-emoji-keyboard";
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -122,7 +120,9 @@ const HomeScreen: React.FC = () => {
   const handlePodiumPress = useCallback(() => {
     navigation.navigate("Leaderboard");
   }, [navigation]);
-
+  const handleDataPress = useCallback(() => {
+    navigation.navigate("UserStats");
+  }, [navigation]);
   return (
     <Container>
       <View style={styles.listContainer}>
@@ -131,16 +131,35 @@ const HomeScreen: React.FC = () => {
             selectedJournal={selectedJournal}
             onOpenPicker={handleOpenGroupPicker}
           />
-          <TouchableOpacity onPress={handlePodiumPress}>
-            <Ionicons name="podium-outline" size={24} color={Colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleSettingsPress}>
-            <Ionicons
-              name="settings-outline"
-              size={24}
-              color={Colors.primary}
-            />
-          </TouchableOpacity>
+          <View
+            style={{
+              flexDirection: "row",
+              width: "30%",
+              justifyContent: "space-between",
+            }}
+          >
+            <TouchableOpacity onPress={handleDataPress}>
+              <Ionicons
+                name="analytics-outline"
+                size={24}
+                color={Colors.primary}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handlePodiumPress}>
+              <Ionicons
+                name="podium-outline"
+                size={24}
+                color={Colors.primary}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSettingsPress}>
+              <Ionicons
+                name="settings-outline"
+                size={24}
+                color={Colors.primary}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.dateContainer}>
           <Text text40BL style={styles.dateText}>
@@ -161,6 +180,7 @@ const HomeScreen: React.FC = () => {
             <DateTimePicker
               mode="date"
               value={selectedDate}
+              maximumDate={new Date()}
               onChange={handleDateChange}
               style={styles.datePicker}
             />
@@ -188,15 +208,6 @@ const HomeScreen: React.FC = () => {
           visible={isGroupPickerOverlayVisible}
           onClose={handleCloseGroupPicker}
           onJournalSelect={handleJournalSelect}
-          journals={journals}
-        />
-      )}
-      {selectedJournal && (
-        <JournalSettingsModal
-          journal={selectedJournal}
-          visible={isSettingsModalVisible}
-          onClose={handleCloseSettingsModal}
-          onJournalLeft={handleJournalLeft}
         />
       )}
     </Container>

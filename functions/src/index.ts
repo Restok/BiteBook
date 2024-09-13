@@ -7,6 +7,8 @@ admin.initializeApp();
 const firestore = admin.firestore();
 
 const genAI = new GoogleGenerativeAI(functions.config().gemini.api_key);
+import * as moment from "moment-timezone";
+import * as stringSimilarity from "string-similarity";
 
 export const processNewEntry = functions.firestore
   .document("entries/{entryId}")
@@ -22,6 +24,19 @@ export const processNewEntry = functions.firestore
     try {
       const points = await calculatePoints(entryData);
       await updatePointsAndLeaderboards(entryId, entryData, points);
+      await updateUserHealthScores(
+        entryData.userId,
+        entryData.timestamp,
+        entryData.overallScore,
+        getTotalWeight(entryData.nutritionAnalysis),
+        1
+      );
+      await updateUserFoods(
+        entryData.userId,
+        entryId,
+        entryData.nutritionAnalysis,
+        entryData.timestamp
+      );
     } catch (error) {
       console.error("Error processing entry:", error);
     }
@@ -36,7 +51,6 @@ async function calculatePoints(entryData: any): Promise<number> {
       maxOutputTokens: 1024,
     },
   });
-  // Fetch and upload images to Gemini
   const imageParts = await Promise.all(
     entryData.images.map(async (imageUrl: string) => {
       const response = await axios.get(imageUrl, {
@@ -59,11 +73,12 @@ async function calculatePoints(entryData: any): Promise<number> {
   for each ingredient, how many serving sizes they likely consumed, rounded to the nearest 0.5
   for each ingredient, a score of red, yellow, orange, to green. Any natural ingredients, please list as green, any foods recognized to be generally beneficial and health, healthy fats, healthy proteins, healthy carbs, please list as green. Yellow foods are still generally okay, but they're processed, such as white rice, compared to brown rice which would be green. Orange is starting to be fairly heavily processed, nutritionally sparse, or just something recognized as you shouldn't eat very often. Red is just ultra processed, would hurt your body consumed in more than a tiny portion.
   for each ingredient, also assign a weight of how much content it contributes to the overall meal. This is used to calculate the overall health score. The overall health score is scored as: sum of all ingredients(weight*health_score)/total weight. Each weight value should be 1-10. A meal worthy amount of an ingredient would be 10, a bite or 2 would be a 1.
-  A category for each ingredient/food. Categories are: Fruit, Vegetable, Protein, Nuts and seeds, Legumes, Dairy, Grains, Noodles/Pasta, and Other
+  A category for each ingredient/food. Categories are: Fruit, Vegetable, Protein, Nuts and seeds, Legumes, Dairy, Grains, Noodles/Pasta, Dessert, Snacks, and Other
 
   If listing the ingredients doesn't give an accurate reflection of the nutritional content, then replace ALL the ingredients in that dish with just the dish name, score, and serving size. Otherwise, respond ONLY with the ingredient and scores in this format. If you already name a dish, for example, cheeseburger, DO NOT then also include burger patty, buns, etc in the ingredient list:
 
   Make sure NOTHING GETS INCLUDED TWICE. Meaning no ingredient gets double dipped. If you include a dish, DO NOT then also include the ingredients of that dish.  Low sugar desserts might be yellow, higher sugar desserts would be orange. Sugary drinks would be red. Very processed snacks and junk food would be red, cleaner snacks would be yellow-orange, or even green.
+  If the way an ingredient is cooked, or prepared, influences your health score rating, please add the relevant adjective to the ingredient name.
 
 Respond in this format. Do not say ANYTHING else:
   ingredient name: a good representative emoji, score, number for serving size, category, weight, short 1-2 sentences for score rating, talking to the user in a fun light hearted tone. Answer with life and personality! In your reasoning, try not to mention what the actual score is.
@@ -250,6 +265,18 @@ export const handleEntryDeletion = functions.firestore
 
     try {
       await removePointsAndUpdateLeaderboards(entryId, entryData);
+      await updateUserHealthScores(
+        entryData.userId,
+        entryData.timestamp,
+        -entryData.overallScore,
+        -getTotalWeight(entryData.nutritionAnalysis),
+        -1
+      );
+      await removeUserFoods(
+        entryData.userId,
+        entryId,
+        entryData.nutritionAnalysis
+      );
     } catch (error) {
       console.error("Error removing points for deleted entry:", error);
     }
@@ -282,6 +309,186 @@ async function removePointsAndUpdateLeaderboards(
       points,
       timestamp
     );
+  }
+
+  await batch.commit();
+}
+
+async function updateUserHealthScores(
+  userId: string,
+  timestamp: admin.firestore.Timestamp,
+  score: number,
+  weight: number,
+  entryCountDelta: number
+) {
+  // Fetch user's timezone from user collection
+  const userDoc = await firestore.collection("users").doc(userId).get();
+  const userTimezone = userDoc.data()?.timezone || "UTC"; // Default to UTC if not set
+
+  const date = moment(timestamp.toDate()).tz(userTimezone);
+  const dayKey = date.format("YYYY-MM-DD");
+  const weekKey = date.format("YYYY-WW");
+  const monthKey = date.format("YYYY-MM");
+
+  const batch = firestore.batch();
+  const userHealthScoresRef = firestore
+    .collection("userHealthScores")
+    .doc(userId);
+  const weightedScore = score * weight;
+
+  // Update daily scores
+  const dailyRef = userHealthScoresRef.collection("dailyScores").doc(dayKey);
+  batch.set(
+    dailyRef,
+    {
+      totalScore: admin.firestore.FieldValue.increment(weightedScore),
+      totalWeight: admin.firestore.FieldValue.increment(weight),
+      entryCount: admin.firestore.FieldValue.increment(entryCountDelta),
+      timestamp: timestamp,
+    },
+    { merge: true }
+  );
+
+  // Update weekly scores
+  const weeklyRef = userHealthScoresRef.collection("weeklyScores").doc(weekKey);
+  batch.set(
+    weeklyRef,
+    {
+      totalScore: admin.firestore.FieldValue.increment(weightedScore),
+      totalWeight: admin.firestore.FieldValue.increment(weight),
+      entryCount: admin.firestore.FieldValue.increment(entryCountDelta),
+      timestamp: date.startOf("isoWeek").toDate(),
+    },
+    { merge: true }
+  );
+
+  // Update monthly scores
+  const monthlyRef = userHealthScoresRef
+    .collection("monthlyScores")
+    .doc(monthKey);
+  batch.set(
+    monthlyRef,
+    {
+      totalScore: admin.firestore.FieldValue.increment(weightedScore),
+      totalWeight: admin.firestore.FieldValue.increment(weight),
+      entryCount: admin.firestore.FieldValue.increment(entryCountDelta),
+      timestamp: date.startOf("month").toDate(),
+    },
+    { merge: true }
+  );
+
+  await batch.commit();
+}
+// Function to normalize food names
+function normalizeFoodName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  // .replace(/\s+/g, "_");
+}
+
+async function updateUserFoods(
+  userId: string,
+  entryId: string,
+  nutritionAnalysis: Ingredient[],
+  timestamp: admin.firestore.Timestamp
+) {
+  const batch = firestore.batch();
+  const userFoodsRef = firestore
+    .collection("userFoods")
+    .doc(userId)
+    .collection("foods");
+
+  for (const ingredient of nutritionAnalysis) {
+    const normalizedName = normalizeFoodName(ingredient.name);
+    const similarFood = await findSimilarFood(userId, normalizedName);
+    const foodRef = userFoodsRef.doc(similarFood || normalizedName);
+
+    batch.set(
+      foodRef,
+      {
+        emoji: ingredient.emoji,
+        count: admin.firestore.FieldValue.increment(1),
+        lastConsumed: timestamp,
+        category: ingredient.category,
+        [`scores.${ingredient.score}`]: admin.firestore.FieldValue.increment(1),
+      },
+      { merge: true }
+    );
+    // Add entry to the entries subcollection
+    const entryRef = foodRef.collection("entries").doc(entryId);
+    batch.set(entryRef, { timestamp: timestamp });
+  }
+
+  await batch.commit();
+}
+
+// Function to find the most similar existing food name
+async function findSimilarFood(
+  userId: string,
+  foodName: string
+): Promise<string | null> {
+  const userFoodsRef = firestore
+    .collection("userFoods")
+    .doc(userId)
+    .collection("foods");
+  const existingFoods = await userFoodsRef.listDocuments();
+  const existingFoodNames = existingFoods.map((doc) => doc.id);
+
+  const matches = stringSimilarity.findBestMatch(
+    normalizeFoodName(foodName),
+    existingFoodNames
+  );
+  if (matches.bestMatch.rating > 0.8) {
+    // If we find a similar food, we should return its normalized name (which is the document ID)
+    return matches.bestMatch.target;
+  }
+  return null;
+}
+
+async function removeUserFoods(
+  userId: string,
+  entryId: string,
+  nutritionAnalysis: Ingredient[]
+) {
+  const batch = firestore.batch();
+  const userFoodsRef = firestore
+    .collection("userFoods")
+    .doc(userId)
+    .collection("foods");
+
+  for (const ingredient of nutritionAnalysis) {
+    const normalizedName = normalizeFoodName(ingredient.name);
+    const similarFood = await findSimilarFood(userId, normalizedName);
+    const foodRef = userFoodsRef.doc(similarFood || normalizedName);
+
+    batch.update(foodRef, {
+      count: admin.firestore.FieldValue.increment(-1),
+      [`scores.${ingredient.score}`]: admin.firestore.FieldValue.increment(-1),
+    });
+
+    // Remove entry from the entries subcollection
+    const entryRef = foodRef.collection("entries").doc(entryId);
+    batch.delete(entryRef);
+
+    // Check if this was the last entry for this food
+    const entriesSnapshot = await foodRef.collection("entries").count().get();
+    if (entriesSnapshot.data().count === 1) {
+      // If this was the last entry, delete the entire food document
+      batch.delete(foodRef);
+    } else {
+      // Update lastConsumed to the timestamp of the most recent remaining entry
+      const latestEntrySnapshot = await foodRef
+        .collection("entries")
+        .orderBy("timestamp", "desc")
+        .limit(1)
+        .get();
+      if (!latestEntrySnapshot.empty) {
+        const latestTimestamp = latestEntrySnapshot.docs[0].data().timestamp;
+        batch.update(foodRef, { lastConsumed: latestTimestamp });
+      }
+    }
   }
 
   await batch.commit();

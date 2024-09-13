@@ -20,6 +20,7 @@ const ExpandedPostScreen: React.FC<ExpandedPostScreenProps> = ({
   const flatListRef = useRef<FlatList>(null);
   const { height } = Dimensions.get("window");
   const { entries } = useJournalContext();
+  // const entriesOrdered = useMemo(() => entries
   // Assume you have a data array of posts
 
   const renderItem = ({ item, index }: { item: any; index: number }) => (

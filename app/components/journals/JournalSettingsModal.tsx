@@ -1,6 +1,6 @@
 import React from "react";
 import { View, StyleSheet, Modal } from "react-native";
-import { Text, Button, Colors } from "react-native-ui-lib";
+import { Text, Button, Colors, Image, Avatar } from "react-native-ui-lib";
 import { Journal } from "../../types/journal";
 import { leaveJournal } from "../../services/leaveJournal";
 
@@ -8,7 +8,7 @@ interface JournalSettingsModalProps {
   journal: Journal;
   visible: boolean;
   onClose: () => void;
-  onJournalLeft: () => void;
+  onJournalLeft: (journal: Journal) => void;
 }
 
 const JournalSettingsModal: React.FC<JournalSettingsModalProps> = ({
@@ -20,7 +20,7 @@ const JournalSettingsModal: React.FC<JournalSettingsModalProps> = ({
   const handleLeaveJournal = async () => {
     try {
       await leaveJournal(journal);
-      onJournalLeft();
+      onJournalLeft(journal);
       onClose();
     } catch (error) {
       // TODO: Show error message to user
@@ -30,7 +30,7 @@ const JournalSettingsModal: React.FC<JournalSettingsModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       onRequestClose={onClose}
     >
@@ -39,9 +39,7 @@ const JournalSettingsModal: React.FC<JournalSettingsModalProps> = ({
           <Text text50 marginB-20>
             {journal.name}
           </Text>
-          <View style={styles.iconContainer}>
-            <Text text40>{journal.icon}</Text>
-          </View>
+          <Avatar source={{ uri: journal.icon }} size={80} />
           <Button
             label="Leave Journal"
             backgroundColor={Colors.red30}

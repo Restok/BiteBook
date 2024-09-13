@@ -30,7 +30,6 @@ export async function getUserJournals(): Promise<Journal[]> {
         name: data?.name || "",
         icon: data?.icon || "",
         createdBy: data?.createdBy || "",
-        createdAt: data?.createdAt?.toDate() || new Date(),
         members: data?.members || [],
         isPersonal: data?.isPersonal || false,
         mode: data?.mode || "",

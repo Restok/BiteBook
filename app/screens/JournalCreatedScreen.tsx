@@ -1,9 +1,8 @@
 import React from "react";
-import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Share, Image } from "react-native";
 import { Text, Colors, Button } from "react-native-ui-lib";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
-import * as Sharing from "expo-sharing";
 import { Journal } from "../types/journal";
 import { RootStackParamList } from "../types/navigation";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -21,21 +20,29 @@ interface JournalCreatedScreenProps {
 const JournalCreatedScreen: React.FC<JournalCreatedScreenProps> = ({
   route,
 }) => {
-  // const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const { journal } = route.params;
-  console.log("WE SHOULD BE HERE");
 
   const handleCopy = async () => {
     await Clipboard.setStringAsync(journal.inviteCode);
   };
   const handleShare = async () => {
-    await Sharing.shareAsync(
-      `Join my journal "${journal.name}" with invite code: ${journal.inviteCode}`
-    );
+    try {
+      const result = await Share.share({
+        message: `Join my journal "${journal.name}" with invite code: ${journal.inviteCode}`,
+      });
+      if (result.action === Share.sharedAction) {
+        console.log("Shared successfully");
+      } else if (result.action === Share.dismissedAction) {
+        console.log("Share dismissed");
+      }
+    } catch (error) {
+      console.error("Error sharing:", error);
+    }
   };
   const onClose = () => {
-    // navigation.navigate("Home");
+    navigation.navigate("Home");
   };
 
   return (
@@ -43,21 +50,24 @@ const JournalCreatedScreen: React.FC<JournalCreatedScreenProps> = ({
       <TouchableOpacity style={styles.backButton} onPress={onClose}>
         <Ionicons name="arrow-back" size={24} color={Colors.black} />
       </TouchableOpacity>
-      <Text style={styles.title}>Success!</Text>
-      <View style={styles.iconContainer}>
-        <Ionicons name="image-outline" size={48} color={Colors.grey30} />
+      <View style={{ alignItems: "center" }}>
+        <Text style={styles.title}>Success!</Text>
+
+        <Image source={{ uri: journal.icon }} style={styles.icon} />
+
+        <Text style={styles.journalName}>{journal.name}</Text>
       </View>
-      <Text style={styles.journalName}>{journal.name}</Text>
-      <Text style={styles.shareText}>
-        Share the invite code with your friends!
-      </Text>
+
       <View style={styles.inviteCodeContainer}>
+        <Text style={styles.shareText}>
+          Share the invite code with your friends!
+        </Text>
         <Text style={styles.inviteCode}>{journal.inviteCode}</Text>
         <View style={styles.buttonContainer}>
           <Button
             style={[styles.button, styles.copyButton]}
             label="Copy"
-            labelStyle={styles.buttonLabel}
+            labelStyle={[styles.buttonLabel, { color: Colors.purple30 }]}
             iconSource={() => (
               <Ionicons name="copy-outline" size={20} color={Colors.purple30} />
             )}
@@ -74,12 +84,14 @@ const JournalCreatedScreen: React.FC<JournalCreatedScreenProps> = ({
           />
         </View>
       </View>
-      <Button
-        label="Done!"
-        style={styles.doneButton}
-        backgroundColor={Colors.green30}
-        onPress={onClose}
-      />
+      <View style={styles.bottomContainer}>
+        <Button
+          label="Done!"
+          style={styles.doneButton}
+          backgroundColor={Colors.green30}
+          onPress={onClose}
+        />
+      </View>
     </View>
   );
 };
@@ -88,9 +100,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
-    paddingTop: 40,
+    paddingVertical: 40,
     paddingHorizontal: 20,
     alignItems: "center",
+    justifyContent: "space-between",
   },
   backButton: {
     position: "absolute",
@@ -112,6 +125,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,
+    overflow: "hidden", // Add this line
+  },
+  icon: {
+    width: 100,
+    height: 100,
+    borderRadius: 40,
   },
   journalName: {
     fontSize: 18,
@@ -125,13 +144,20 @@ const styles = StyleSheet.create({
   },
   inviteCodeContainer: {
     width: "100%",
-    marginBottom: 30,
+    marginBottom: 80,
+    height: 200,
+    justifyContent: "space-evenly",
+    alignItems: "center",
   },
   inviteCode: {
     fontSize: 24,
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 10,
+    width: "100%",
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 8,
   },
   buttonContainer: {
     flexDirection: "row",
@@ -142,6 +168,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginHorizontal: 5,
+    justifyContent: "center",
+    alignItems: "center",
   },
   copyButton: {
     backgroundColor: Colors.white,
@@ -151,14 +179,18 @@ const styles = StyleSheet.create({
   shareButton: {
     backgroundColor: Colors.purple30,
   },
-  buttonLabel: {
-    fontSize: 14,
-    fontWeight: "bold",
+  bottomContainer: {
+    width: "100%",
+    bottom: 20,
   },
   doneButton: {
     width: "100%",
     height: 50,
     borderRadius: 25,
+  },
+  buttonLabel: {
+    fontSize: 14,
+    textAlign: "center",
   },
 });
 

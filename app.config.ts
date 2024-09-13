@@ -20,6 +20,7 @@ export default {
       "@react-native-firebase/crashlytics",
       "expo-router",
       "expo-image-picker",
+      "expo-localization",
     ],
     ios: {
       supportsTablet: true,

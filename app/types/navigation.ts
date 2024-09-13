@@ -12,4 +12,7 @@ export type RootStackParamList = {
   JournalCreated: { journal: Journal };
   FoodAnalysis: { entryData: Entry; index: number };
   Leaderboard: undefined;
+  JoinJournal: { journal: Journal };
+  EnterInviteCode: undefined;
+  UserStats: undefined;
 };

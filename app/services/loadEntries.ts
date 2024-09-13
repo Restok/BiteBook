@@ -47,6 +47,6 @@ export async function loadEntries(
     } as Entry;
   });
 
-  entries.sort((a, b) => a.timestamp - b.timestamp);
+  entries.sort((a, b) => b.timestamp - a.timestamp);
   return entries;
 }

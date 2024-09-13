@@ -58,6 +58,7 @@ const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
             <NavigationAction
               icon={"arrow-back-outline"}
               size="giant"
+              status="placeholder"
               tintColor={Colors.grey20}
             />
           );

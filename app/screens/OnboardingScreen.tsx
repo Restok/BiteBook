@@ -13,6 +13,7 @@ import firestore from "@react-native-firebase/firestore";
 import storage from "@react-native-firebase/storage";
 import { createJournal } from "../services/createJournal";
 import { compressImage } from "../utils/compressImage";
+import * as Localization from "expo-localization"; // Add this import
 
 const OnboardingScreen: React.FC<{ onComplete: () => void }> = ({
   onComplete,
@@ -49,6 +50,7 @@ const OnboardingScreen: React.FC<{ onComplete: () => void }> = ({
         photoURL: photoURL,
         createdAt: firestore.FieldValue.serverTimestamp(),
         journals: [],
+        timezone: Localization.getCalendars()[0].timeZone,
       });
 
       await user.updateProfile({ displayName: name, photoURL });

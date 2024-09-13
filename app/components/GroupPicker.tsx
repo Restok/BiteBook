@@ -21,7 +21,7 @@ const GroupPicker: React.FC<GroupPickerProps> = ({
           containerStyle={styles.avatar}
         />
       )}
-      <Text style={styles.pickerText}>
+      <Text style={styles.pickerText} numberOfLines={1}>
         {selectedJournal?.name || "Select Journal"}
       </Text>
       {/* <Text style={styles.dropdownArrow}>▼</Text> */}
@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     padding: 5,
     marginVertical: 15,
     borderRadius: 15,
-    minWidth: "40%",
+    width: 150,
   },
   avatar: {
     marginRight: 10,

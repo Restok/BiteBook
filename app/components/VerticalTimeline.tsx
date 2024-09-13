@@ -42,6 +42,13 @@ const TimeMarkers: React.FC<TimeMarkersProps> = React.memo(
       [currentTime, zoomLevel]
     );
     const getDateString = (timestamp: number) => {
+      const date = new Date(timestamp);
+      if (date.getHours() === 0 && date.getMinutes() === 0) {
+        return date.toLocaleDateString([], {
+          month: "short",
+          day: "numeric",
+        });
+      }
       return new Date(timestamp)
         .toLocaleTimeString([], {
           hour: "2-digit",

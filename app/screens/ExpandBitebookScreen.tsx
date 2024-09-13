@@ -14,7 +14,7 @@ const ExpandBitebookScreen: React.FC<ExpandBitebookScreenProps> = ({
 }) => {
   const onClose = () => navigation.goBack();
   const onStartNewJournal = () => navigation.navigate("CreateJournal", {});
-  const onJoinExistingJournal = () => {};
+  const onJoinExistingJournal = () => navigation.navigate("EnterInviteCode");
 
   return (
     <ExpandBitebookOverlay
