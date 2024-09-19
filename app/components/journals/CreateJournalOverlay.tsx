@@ -12,6 +12,7 @@ import * as ImagePicker from "expo-image-picker";
 import { createJournal } from "../../services/createJournal";
 import { Icon, TopNavigation } from "@ui-kitten/components";
 import { NavigationAction } from "../ui";
+import { useLoading } from "../../contexts/LoadingContext";
 
 interface CreateJournalOverlayProps {
   onClose: () => void;
@@ -25,7 +26,7 @@ const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
   const [journalName, setJournalName] = useState("");
   const [journalImage, setJournalImage] = useState("");
   const [newJournal, setNewJournal] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { isLoading, setIsLoading } = useLoading();
   const [error, setError] = useState<string | null>(null);
   const handleImagePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -46,6 +47,7 @@ const CreateJournalOverlay: React.FC<CreateJournalOverlayProps> = ({
       setError(null);
       const journal = await createJournal(journalName.trim(), journalImage);
       onCreateJournal(journal);
+      setIsLoading(false);
     }
   };
 

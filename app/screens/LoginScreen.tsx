@@ -14,6 +14,7 @@ const LoginScreen: React.FC = () => {
   const signIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
+      await GoogleSignin.signOut();
       const { idToken } = await GoogleSignin.signIn();
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
       await auth().signInWithCredential(googleCredential);
@@ -33,7 +34,7 @@ const LoginScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <Text text60 style={styles.title}>
-        LoveYumDiary
+        I'll make splash screen eventually
       </Text>
       <GoogleSigninButton
         onPress={signIn}

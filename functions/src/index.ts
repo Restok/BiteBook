@@ -17,24 +17,24 @@ export const processNewEntry = functions.firestore
     const entryId = context.params.entryId;
     const entryType = entryData.entryType as string;
     if (entryType !== "meal" && entryType !== "snack") {
-      console.log("Entry is not a meal or snack. Skipping processing.");
       return null;
     }
-
     try {
-      const points = await calculatePoints(entryData);
+      const { points, score, totalWeight, ingredients } = await calculatePoints(
+        entryData
+      );
       await updatePointsAndLeaderboards(entryId, entryData, points);
       await updateUserHealthScores(
         entryData.userId,
         entryData.timestamp,
-        entryData.overallScore,
-        getTotalWeight(entryData.nutritionAnalysis),
+        score,
+        totalWeight,
         1
       );
       await updateUserFoods(
         entryData.userId,
         entryId,
-        entryData.nutritionAnalysis,
+        ingredients,
         entryData.timestamp
       );
     } catch (error) {
@@ -43,7 +43,12 @@ export const processNewEntry = functions.firestore
     return null; // Add this line
   });
 
-async function calculatePoints(entryData: any): Promise<number> {
+async function calculatePoints(entryData: any): Promise<{
+  score: number;
+  points: number;
+  totalWeight: number;
+  ingredients: Ingredient[];
+}> {
   const model = genAI.getGenerativeModel({
     model: "gemini-1.5-pro-exp-0827",
     generationConfig: {
@@ -72,7 +77,7 @@ async function calculatePoints(entryData: any): Promise<number> {
   A break down of the ingredients in the image
   for each ingredient, how many serving sizes they likely consumed, rounded to the nearest 0.5
   for each ingredient, a score of red, yellow, orange, to green. Any natural ingredients, please list as green, any foods recognized to be generally beneficial and health, healthy fats, healthy proteins, healthy carbs, please list as green. Yellow foods are still generally okay, but they're processed, such as white rice, compared to brown rice which would be green. Orange is starting to be fairly heavily processed, nutritionally sparse, or just something recognized as you shouldn't eat very often. Red is just ultra processed, would hurt your body consumed in more than a tiny portion.
-  for each ingredient, also assign a weight of how much content it contributes to the overall meal. This is used to calculate the overall health score. The overall health score is scored as: sum of all ingredients(weight*health_score)/total weight. Each weight value should be 1-10. A meal worthy amount of an ingredient would be 10, a bite or 2 would be a 1.
+  for each ingredient, also assign a weight of how much content it contributes to the overall meal. This is used to calculate the overall health score. The overall health score is scored as: sum of all ingredients(weight*health_score)/total weight. Each weight value should be 1-10. Enough for this ingredient to constitute its own meal would be 10, a bite or 2 would be a 1.
   A category for each ingredient/food. Categories are: Fruit, Vegetable, Protein, Nuts and seeds, Legumes, Dairy, Grains, Noodles/Pasta, Dessert, Snacks, and Other
 
   If listing the ingredients doesn't give an accurate reflection of the nutritional content, then replace ALL the ingredients in that dish with just the dish name, score, and serving size. Otherwise, respond ONLY with the ingredient and scores in this format. If you already name a dish, for example, cheeseburger, DO NOT then also include burger patty, buns, etc in the ingredient list:
@@ -87,7 +92,7 @@ Each line should be
 
 If you do not see food, or the pictures does not look like that about food, return nothing. If a dish looks like it has more than 10 ingredients, just simplify to the dish name. If you are not confident about the ingredients, just give a general dish name
 
-As a hollistic nutritionist, you believe FAT is NOT BAD, Sodium is NOT BAD, calories are NOT BAD. In fact, from healthy sources, they are GOOD. What is important is the QUALITY of the food and the nutritional value. You NEVER say FAT in your reasoning, you NEVER say SODIUM in your reasoning, you NEVER say calories. Concerning elements are excessive added sugar, preservatives, artificial flavoring and coloring, lack of nutrition, etc
+As a hollistic nutritionist, you believe FAT is NOT BAD, Sodium is NOT BAD, calories are NOT BAD. NEVER penalize a food item due to sodium or fat. In fact, from healthy sources, they are GOOD. What is important is the QUALITY of the food and the nutritional value. You NEVER say FAT in your reasoning, you NEVER say SODIUM in your reasoning, you NEVER say calories. Concerning elements are excessive added sugar, preservatives, artificial flavoring and coloring, lack of nutrition, etc
 
 If you do not see food, or the pictures does not look like that about food, return nothing. If a dish looks like it has more than 10 ingredients, just simplify to the dish name. If you are not confident about the ingredients, just give a general dish name`;
   const result = await model.generateContent([...imageParts, prompt]);
@@ -96,15 +101,14 @@ If you do not see food, or the pictures does not look like that about food, retu
   console.log("Analysis text:", analysisText);
   const ingredients = parseIngredients(analysisText);
 
-  const { score, points } = calculateOverallScore(ingredients);
-  // Update the entry with the detailed analysis
+  const { score, points, totalWeight } = calculateOverallScore(ingredients);
   await firestore.collection("entries").doc(entryData.id).update({
     nutritionAnalysis: ingredients,
     overallScore: score,
     points: points,
   });
 
-  return points;
+  return { score, points, totalWeight, ingredients };
 }
 
 interface Ingredient {
@@ -115,6 +119,7 @@ interface Ingredient {
   weight: number;
   reasoning: string;
   emoji: string;
+  foodKey?: string;
 }
 
 function parseIngredients(analysisText: string): Ingredient[] {
@@ -153,10 +158,11 @@ function getTotalWeight(ingredients: Ingredient[]): number {
 function calculateOverallScore(ingredients: Ingredient[]): {
   score: number;
   points: number;
+  totalWeight: number;
 } {
   if (ingredients.length === 0) {
     console.warn("No valid ingredients to calculate score");
-    return { score: 0, points: 0 };
+    return { score: 0, points: 0, totalWeight: 0 };
   }
   const scoreMap = { green: 1, yellow: 0.7, orange: 0.5, red: 0.2 };
   const totalWeight = getTotalWeight(ingredients);
@@ -167,7 +173,7 @@ function calculateOverallScore(ingredients: Ingredient[]): {
   const score =
     totalWeight > 0 ? Math.round((weightedScore / totalWeight) * 10) / 10 : 0;
   const points = Math.round(score * Math.min(10, totalWeight) * 10);
-  return { score, points };
+  return { score, points, totalWeight };
 }
 
 async function updatePointsAndLeaderboards(
@@ -262,7 +268,9 @@ export const handleEntryDeletion = functions.firestore
       );
       return null;
     }
-
+    if (!entryData.nutritionAnalysis) {
+      return null;
+    }
     try {
       await removePointsAndUpdateLeaderboards(entryId, entryData);
       await updateUserHealthScores(
@@ -295,7 +303,6 @@ async function removePointsAndUpdateLeaderboards(
       ? entryData.timestamp
       : admin.firestore.Timestamp.fromDate(new Date(entryData.timestamp));
   if (!entryData.points) {
-    console.log("Entry does not have an overallScore. Skipping point removal.");
     return;
   }
   const points = -entryData.points;
@@ -334,9 +341,10 @@ async function updateUserHealthScores(
   const userHealthScoresRef = firestore
     .collection("userHealthScores")
     .doc(userId);
-  const weightedScore = score * weight;
-
-  // Update daily scores
+  let weightedScore = score * weight;
+  if (score < 0) {
+    weightedScore = -weightedScore;
+  }
   const dailyRef = userHealthScoresRef.collection("dailyScores").doc(dayKey);
   batch.set(
     dailyRef,
@@ -399,11 +407,14 @@ async function updateUserFoods(
     .collection("userFoods")
     .doc(userId)
     .collection("foods");
+  const entryRef = firestore.collection("entries").doc(entryId);
+  const updatedNutritionAnalysis = [];
 
   for (const ingredient of nutritionAnalysis) {
     const normalizedName = normalizeFoodName(ingredient.name);
     const similarFood = await findSimilarFood(userId, normalizedName);
-    const foodRef = userFoodsRef.doc(similarFood || normalizedName);
+    const foodKey = similarFood || normalizedName;
+    const foodRef = userFoodsRef.doc(foodKey);
 
     batch.set(
       foodRef,
@@ -412,14 +423,21 @@ async function updateUserFoods(
         count: admin.firestore.FieldValue.increment(1),
         lastConsumed: timestamp,
         category: ingredient.category,
-        [`scores.${ingredient.score}`]: admin.firestore.FieldValue.increment(1),
+        scores: {
+          [ingredient.score]: admin.firestore.FieldValue.increment(1),
+        },
       },
       { merge: true }
     );
+    updatedNutritionAnalysis.push({
+      ...ingredient,
+      foodKey: foodKey,
+    });
     // Add entry to the entries subcollection
-    const entryRef = foodRef.collection("entries").doc(entryId);
-    batch.set(entryRef, { timestamp: timestamp });
+    const foodRefEntryRef = foodRef.collection("entries").doc(entryId);
+    batch.set(foodRefEntryRef, { timestamp: timestamp });
   }
+  batch.update(entryRef, { nutritionAnalysis: updatedNutritionAnalysis });
 
   await batch.commit();
 }
@@ -435,7 +453,9 @@ async function findSimilarFood(
     .collection("foods");
   const existingFoods = await userFoodsRef.listDocuments();
   const existingFoodNames = existingFoods.map((doc) => doc.id);
-
+  if (existingFoodNames.length === 0) {
+    return null;
+  }
   const matches = stringSimilarity.findBestMatch(
     normalizeFoodName(foodName),
     existingFoodNames
@@ -459,13 +479,15 @@ async function removeUserFoods(
     .collection("foods");
 
   for (const ingredient of nutritionAnalysis) {
-    const normalizedName = normalizeFoodName(ingredient.name);
-    const similarFood = await findSimilarFood(userId, normalizedName);
-    const foodRef = userFoodsRef.doc(similarFood || normalizedName);
+    const foodKey = ingredient.foodKey;
+    if (!foodKey) continue;
 
+    const foodRef = userFoodsRef.doc(foodKey);
     batch.update(foodRef, {
       count: admin.firestore.FieldValue.increment(-1),
-      [`scores.${ingredient.score}`]: admin.firestore.FieldValue.increment(-1),
+      scores: {
+        [ingredient.score]: admin.firestore.FieldValue.increment(-1),
+      },
     });
 
     // Remove entry from the entries subcollection

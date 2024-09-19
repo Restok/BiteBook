@@ -32,11 +32,6 @@ const JournalCreatedScreen: React.FC<JournalCreatedScreenProps> = ({
       const result = await Share.share({
         message: `Join my journal "${journal.name}" with invite code: ${journal.inviteCode}`,
       });
-      if (result.action === Share.sharedAction) {
-        console.log("Shared successfully");
-      } else if (result.action === Share.dismissedAction) {
-        console.log("Share dismissed");
-      }
     } catch (error) {
       console.error("Error sharing:", error);
     }
@@ -62,7 +57,9 @@ const JournalCreatedScreen: React.FC<JournalCreatedScreenProps> = ({
         <Text style={styles.shareText}>
           Share the invite code with your friends!
         </Text>
-        <Text style={styles.inviteCode}>{journal.inviteCode}</Text>
+        <Text style={styles.inviteCode} selectable>
+          {journal.inviteCode}
+        </Text>
         <View style={styles.buttonContainer}>
           <Button
             style={[styles.button, styles.copyButton]}

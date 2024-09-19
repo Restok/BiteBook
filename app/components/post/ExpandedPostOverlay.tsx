@@ -22,6 +22,7 @@ import { updateReaction } from "../../services/updateReaction";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { RootStackParamList } from "../../types/navigation";
 import { StackNavigationProp } from "@react-navigation/stack";
+import { useLoading } from "../../contexts/LoadingContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -49,6 +50,7 @@ const ExpandedPostOverlay: React.FC<ExpandedPostOverlayProps> = ({
   const isCurrentUserOwner = auth().currentUser?.uid === entry.userId;
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [reactionInProgress, setReactionInProgress] = useState(false);
+  const { isLoading, setIsLoading } = useLoading();
   const handleDeletePress = () => {
     setIsDeleteModalVisible(true);
   };
@@ -70,16 +72,24 @@ const ExpandedPostOverlay: React.FC<ExpandedPostOverlayProps> = ({
 
   const { navigate } = useNavigation<StackNavigationProp<RootStackParamList>>();
   const handleFoodAnalysisPress = () => {
+    if (!entry.nutritionAnalysis) {
+      reloadSingleEntry(entry.id);
+    }
     navigate("FoodAnalysis", { entryData: entry, index: index });
   };
   const handleDeleteConfirm = async () => {
+    setIsLoading(true);
+    setIsDeleteModalVisible(false);
+
     try {
       await deleteEntry(entry.id);
-      onClose();
     } catch (error) {
       console.error("Error deleting entry:", error);
+    } finally {
+      onClose();
+
+      setIsLoading(false);
     }
-    setIsDeleteModalVisible(false);
   };
   const renderItem = ({ item }: { item: string }) => {
     return (

@@ -10,8 +10,6 @@ export async function leaveJournal(journal: Journal): Promise<void> {
   const db = firestore();
   const journalRef = db.collection("journals").doc(journal.id);
   const userRef = db.collection("users").doc(user.uid);
-  console.log(user.uid);
-  console.log(journal.id);
   // Start a batch write
   const batch = db.batch();
 

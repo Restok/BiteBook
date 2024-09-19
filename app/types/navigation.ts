@@ -15,4 +15,6 @@ export type RootStackParamList = {
   JoinJournal: { journal: Journal };
   EnterInviteCode: undefined;
   UserStats: undefined;
+  HealthScoreExpanded: undefined;
+  TopFoodsExpanded: undefined;
 };

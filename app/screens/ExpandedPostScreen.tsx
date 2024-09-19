@@ -4,6 +4,7 @@ import ExpandedPostOverlay from "../components/post/ExpandedPostOverlay";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useJournalContext } from "../contexts/JournalContext";
 import { Colors } from "react-native-ui-lib";
+import { useLoading } from "../contexts/LoadingContext";
 
 type ExpandedPostScreenProps = {
   navigation: StackNavigationProp<any>;
@@ -22,7 +23,6 @@ const ExpandedPostScreen: React.FC<ExpandedPostScreenProps> = ({
   const { entries } = useJournalContext();
   // const entriesOrdered = useMemo(() => entries
   // Assume you have a data array of posts
-
   const renderItem = ({ item, index }: { item: any; index: number }) => (
     <View style={{ height }}>
       <ExpandedPostOverlay onClose={onClose} index={index} />

@@ -17,6 +17,7 @@ interface UserContextType {
   journalUsersById: Record<string, User | null>;
   isLoading: boolean;
   loadJournalUsers: () => Promise<void>;
+  currentUser: User | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -32,6 +33,7 @@ export const useUserContext = () => {
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [journalUsersById, setJournalUsersById] = useState<
     Record<string, User | null>
   >({});
@@ -55,10 +57,22 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       loadJournalUsers();
     }
   }, [selectedJournal, loadJournalUsers]);
+  useEffect(() => {
+    const unsubscribe = auth().onAuthStateChanged(async (user) => {
+      if (user) {
+        const userData = await loadUserByUid(user.uid);
+        setCurrentUser(userData);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <UserContext.Provider
-      value={{ journalUsersById, isLoading, loadJournalUsers }}
+      value={{ journalUsersById, isLoading, loadJournalUsers, currentUser }}
     >
       {children}
     </UserContext.Provider>

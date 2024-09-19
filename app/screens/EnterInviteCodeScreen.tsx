@@ -8,14 +8,15 @@ import { getJournalFromInviteCode } from "../services/getJournalFromInviteCode";
 import { useNavigation } from "@react-navigation/native";
 import { TopNavigation } from "@ui-kitten/components";
 import { NavigationAction } from "../components/ui";
+import { useLoading } from "../contexts/LoadingContext";
 
 const EnterInviteCodeScreen: React.FC<{}> = ({}) => {
   const [inviteCode, setInviteCode] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { isLoading, setIsLoading } = useLoading();
   const onClose = () => navigation.goBack();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const handleJoinJournal = async () => {
-    setLoading(true);
+    setIsLoading(true);
     try {
       const journal = await getJournalFromInviteCode(inviteCode.trim());
       if (journal) {
@@ -28,7 +29,7 @@ const EnterInviteCodeScreen: React.FC<{}> = ({}) => {
       console.error("Error fetching journal:", error);
       Alert.alert("Error", "An error occurred.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
   return (
@@ -57,7 +58,7 @@ const EnterInviteCodeScreen: React.FC<{}> = ({}) => {
         style={styles.button}
         backgroundColor={Colors.purple30}
         onPress={handleJoinJournal}
-        disabled={!inviteCode.trim() || loading}
+        disabled={!inviteCode.trim() || isLoading}
       />
     </View>
   );

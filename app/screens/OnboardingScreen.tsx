@@ -14,12 +14,12 @@ import storage from "@react-native-firebase/storage";
 import { createJournal } from "../services/createJournal";
 import { compressImage } from "../utils/compressImage";
 import * as Localization from "expo-localization"; // Add this import
+import { useOnboarding } from "../contexts/OnboardingContext";
 
-const OnboardingScreen: React.FC<{ onComplete: () => void }> = ({
-  onComplete,
-}) => {
+const OnboardingScreen: React.FC = () => {
   const [name, setName] = useState("");
   const [profilePicture, setProfilePicture] = useState(null);
+  const { setOnboardingComplete } = useOnboarding();
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -57,7 +57,7 @@ const OnboardingScreen: React.FC<{ onComplete: () => void }> = ({
 
       try {
         await createJournal(`Your Journal`, photoURL, true);
-        onComplete();
+        setOnboardingComplete(true);
       } catch (error) {
         console.error("Failed to create personal journal:", error);
       }

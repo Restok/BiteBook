@@ -6,6 +6,7 @@ import { RootStackParamList } from "../types/navigation";
 import { Journal } from "../types/journal";
 import JournalCreatedScreen from "./JournalCreatedScreen";
 import { View } from "react-native";
+import { useConfetti } from "../contexts/ConfettiContext";
 
 type CreateJournalScreenProps = {
   route: any;
@@ -17,10 +18,11 @@ const CreateJournalScreen: React.FC<CreateJournalScreenProps> = ({ route }) => {
   const onClose = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
+  const { triggerConfetti } = useConfetti();
 
-  console.log("Back here");
   const onCreateJournal = (journal) => {
-    console.log("Journal created:", journal);
+    triggerConfetti();
+
     navigation.navigate("JournalCreated", { journal });
   };
 

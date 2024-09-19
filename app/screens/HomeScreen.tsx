@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Modal } from "react-native";
 import { Text, Button, Colors, Icon } from "react-native-ui-lib";
 import {
   useFocusEffect,
@@ -17,9 +17,12 @@ import { Journal } from "../types/journal";
 import { RootStackParamList } from "../types/navigation";
 import { Ionicons } from "@expo/vector-icons";
 import { Container } from "../components/ui";
+import auth from "@react-native-firebase/auth";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+
+import BottomSheet from "@gorhom/bottom-sheet";
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -37,6 +40,7 @@ const HomeScreen: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isGroupPickerOverlayVisible, setGroupPickerOverlayVisible] =
     useState(false);
+  const bottomSheetRef = React.useRef<BottomSheet>(null);
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const handleDateChange = useCallback(
@@ -52,10 +56,15 @@ const HomeScreen: React.FC = () => {
   const openDatePicker = useCallback(() => {
     setDatePickerVisible(true);
   }, []);
-  const handleCloseSettingsModal = useCallback(() => {
-    setIsSettingsModalVisible(false);
-  }, []);
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await auth().signOut();
+      // The auth state listener in App.tsx will handle navigation
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  }, []);
   useFocusEffect(
     useCallback(() => {
       if (isFocused) {
@@ -69,7 +78,6 @@ const HomeScreen: React.FC = () => {
     if (!isFocused) {
       setIsModalVisible(false);
       setGroupPickerOverlayVisible(false);
-      setIsSettingsModalVisible(false);
     }
   }, [isFocused]);
 
@@ -95,6 +103,7 @@ const HomeScreen: React.FC = () => {
   }, []);
   const handleSettingsPress = useCallback(() => {
     setIsSettingsModalVisible(true);
+    bottomSheetRef.current?.expand();
   }, []);
 
   const handleEntryPress = useCallback(
@@ -210,6 +219,22 @@ const HomeScreen: React.FC = () => {
           onJournalSelect={handleJournalSelect}
         />
       )}
+      <BottomSheet
+        index={-1}
+        snapPoints={["25%"]}
+        animateOnMount={false}
+        enablePanDownToClose
+        ref={bottomSheetRef}
+        backgroundStyle={{ backgroundColor: Colors.grey70 }}
+      >
+        <View style={styles.modalContainer}>
+          <Button
+            label="Log Out"
+            onPress={handleLogout}
+            backgroundColor={Colors.red30}
+          />
+        </View>
+      </BottomSheet>
     </Container>
   );
 };
@@ -244,6 +269,11 @@ const styles = StyleSheet.create({
     height: 60,
     textAlign: "center",
     textAlignVertical: "center",
+  },
+  modalContainer: {
+    padding: 20,
+    borderRadius: 10,
+    alignItems: "center",
   },
 });
 

@@ -21,6 +21,15 @@ export default {
       "expo-router",
       "expo-image-picker",
       "expo-localization",
+      [
+        "expo-font",
+        {
+          fonts: [
+            "node_modules/@expo-google-fonts/inter/Inter_900Black.ttf",
+            "node_modules/@expo-google-fonts/inter/Inter_400Regular.ttf",
+          ],
+        },
+      ],
     ],
     ios: {
       supportsTablet: true,

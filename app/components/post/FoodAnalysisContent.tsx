@@ -224,7 +224,7 @@ const FoodAnalysisContent: React.FC<FoodAnalysisContentProps> = ({
             </>
           ) : (
             <View>
-              <Text>No analysis available</Text>
+              <Text>Still Analyzing! Check back later.</Text>
             </View>
           )}
         </View>

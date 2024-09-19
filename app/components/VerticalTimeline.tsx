@@ -259,10 +259,9 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
 
   const renderGroupedEntries = (group: Entry[], groupIndex: number) => {
     const firstEntry = group[0];
-    // const uniqueUsers = Array.from(new Set(group.map((entry) => entry.userId)));
-    const uniqueUsers = group.map((entry) => entry.userId);
+    const uniqueUsers = Array.from(new Set(group.map((entry) => entry.userId)));
+    // const uniqueUsers = group.map((entry) => entry.userId);
     const displayUsers = uniqueUsers.slice(0, 3);
-    const hasMoreUsers = uniqueUsers.length > 3;
     return (
       <View key={`group-${groupIndex}`}>
         <View
@@ -315,7 +314,13 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
         <View
           style={[styles.entry, { top: getEntryPosition(entry.timestamp) }]}
         >
-          <Avatar source={{ uri: user?.photoURL }} size={40} />
+          <View style={styles.groupedAvatarsContainer}>
+            <Image
+              key={index}
+              source={{ uri: user?.photoURL }}
+              style={[styles.groupedAvatar, { zIndex: 3 - index }]}
+            />
+          </View>
           <TouchableOpacity
             style={styles.entryTextContainer}
             onPress={() => onEntryPress(index)}
@@ -511,7 +516,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderWidth: 2,
     borderRadius: 20,
-    marginLeft: -10,
+    marginLeft: -8,
     borderColor: "white",
   },
   moreUsersIndicator: {

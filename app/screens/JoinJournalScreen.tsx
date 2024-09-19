@@ -7,6 +7,7 @@ import { RootStackParamList } from "../types/navigation";
 import { joinJournal } from "../services/joinJournal";
 import { getBatchUsersByIds } from "../services/getBatchUsersByIds";
 import { User } from "../types/user";
+import { useLoading } from "../contexts/LoadingContext";
 
 type JoinJournalScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "JoinJournal">;
@@ -18,11 +19,11 @@ const JoinJournalScreen: React.FC<JoinJournalScreenProps> = ({
   route,
 }) => {
   const { journal } = route.params;
-  const [loading, setLoading] = React.useState(false);
+  const { isLoading, setIsLoading } = useLoading();
   const [members, setMembers] = useState<User[]>([]);
 
   const handleJoin = async () => {
-    setLoading(true);
+    setIsLoading(true);
     try {
       await joinJournal(journal.id);
       // Navigate to the journal or update the app state as needed
@@ -31,7 +32,7 @@ const JoinJournalScreen: React.FC<JoinJournalScreenProps> = ({
       console.error("Error joining journal:", error);
       Alert.alert("Error", "Failed to join the journal. Please try again.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
   useEffect(() => {
@@ -91,8 +92,8 @@ const JoinJournalScreen: React.FC<JoinJournalScreenProps> = ({
         style={styles.joinButton}
         backgroundColor={Colors.green30}
         onPress={handleJoin}
-        disabled={loading}
-        loading={loading}
+        disabled={isLoading}
+        loading={isLoading}
       />
     </View>
   );

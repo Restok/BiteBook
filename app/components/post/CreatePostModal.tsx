@@ -16,6 +16,11 @@ import JournalSelectionModal from "./JournalSelectionModal";
 import { createEntry } from "../../services/createEntry";
 import { Entry } from "../../types/entry";
 import { compressImage } from "../../utils/compressImage";
+import { useLoading } from "../../contexts/LoadingContext";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { RootStackParamList } from "../../types/navigation";
+import { useConfetti } from "../../contexts/ConfettiContext";
 
 interface CreatePostModalProps {
   visible: boolean;
@@ -35,6 +40,8 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showJournalSelection, setShowJournalSelection] = useState(false);
   const [selectedJournals, setSelectedJournals] = useState<string[]>([]);
+  const { triggerConfetti } = useConfetti();
+  const { isLoading, setIsLoading } = useLoading();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleImagePick = async () => {
@@ -66,8 +73,11 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
       setShowJournalSelection(true);
     }
   };
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+
   const handleJournalSelectionSubmit = async (selectedJournals: string[]) => {
     setIsSubmitting(true);
+    setIsLoading(true);
     try {
       const entryId = await createEntry({
         images,
@@ -82,12 +92,14 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
       setType("Meal");
       setTime(new Date());
       setSelectedJournals([]);
-      onClose();
+      triggerConfetti();
+      navigation.navigate("ExpandedPost", { index: 0 });
     } catch (error) {
       console.error("Error creating entry:", error);
       // Handle error (e.g., show an error message to the user)
     } finally {
       setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
   useEffect(() => {
@@ -187,7 +199,9 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
             style={styles.postButton}
             backgroundColor={Colors.purple30}
             onPress={handleSubmit}
-            disabled={!title.trim() || images.length === 0 || isSubmitting}
+            disabled={
+              !title.trim() || images.length === 0 || isSubmitting || isLoading
+            }
           />
         </View>
       </View>

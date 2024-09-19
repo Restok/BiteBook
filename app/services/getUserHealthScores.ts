@@ -1,9 +1,13 @@
 import firestore from "@react-native-firebase/firestore";
 import auth from "@react-native-firebase/auth";
+import * as Localization from "expo-localization";
+import moment from "moment-timezone";
 
 export type HealthScore = {
   date: string;
   score: number;
+  i: number;
+  target: number;
 };
 
 export type Period = "daily" | "weekly" | "monthly";
@@ -23,20 +27,51 @@ export async function getUserHealthScores(
     .collection("userHealthScores")
     .doc(user.uid)
     .collection(`${period}Scores`);
-
   const snapshot = await userHealthScoresRef
     .where("timestamp", ">=", startDate)
     .where("timestamp", "<=", endDate)
-    .orderBy("timestamp", "asc")
+    .orderBy("timestamp", "desc")
     .get();
 
-  const healthScores: HealthScore[] = snapshot.docs.map((doc) => {
+  const fetchedScores: { [date: string]: HealthScore } = {};
+  snapshot.docs.forEach((doc) => {
     const data = doc.data();
-    return {
+    fetchedScores[doc.id] = {
       date: doc.id,
-      score: data.totalScore / data.totalWeight,
+      score: data.totalScore / Math.max(data.totalWeight, 1),
+      i: 0,
+      target: 1,
     };
   });
 
+  const healthScores: HealthScore[] = [];
+  let currentDate = startDate;
+  while (currentDate <= endDate) {
+    const dateString = getHealthScoreDateString(currentDate, period);
+    const fetchedScore = fetchedScores[dateString];
+
+    healthScores.push(
+      fetchedScore || {
+        date: dateString,
+        score: 0,
+        i: 0,
+        target: 1,
+      }
+    );
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
   return healthScores;
+}
+
+export function getHealthScoreDateString(date, period) {
+  const d = moment(date).tz(Localization.getCalendars()[0].timeZone);
+  switch (period) {
+    case "daily":
+      return d.format("YYYY-MM-DD");
+    case "weekly":
+      return d.format("YYYY-WW");
+    case "monthly":
+      return d.format("YYYY-MM");
+  }
 }
