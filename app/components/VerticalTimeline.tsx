@@ -14,6 +14,7 @@ import {
   PinchGestureHandler,
   State,
   NativeViewGestureHandler,
+  RefreshControl,
 } from "react-native-gesture-handler";
 import { useDebouncedCallback } from "use-debounce";
 import { Entry } from "../types/entry";
@@ -131,7 +132,13 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
   const scrollOffset = useRef(0);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [scrollViewHeight, setScrollViewHeight] = useState(600);
-  const { entries, selectedDate } = useJournalContext();
+  const { entries, selectedDate, loadEntriesForDate } = useJournalContext();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadEntriesForDate(selectedDate);
+    setRefreshing(false);
+  }, [loadEntriesForDate, selectedDate]);
 
   const calcHours = () => {
     if (selectedDate.getDate() !== new Date().getDate()) {
@@ -400,22 +407,25 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
   };
   return (
     <Container level="1" style={styles.container}>
-      <PinchGestureHandler
-        ref={pinchRef}
-        onGestureEvent={onPinchGestureEvent}
-        onHandlerStateChange={onPinchHandlerStateChange}
-        simultaneousHandlers={nativeViewRef}
+      <NativeViewGestureHandler
+        ref={nativeViewRef}
+        simultaneousHandlers={pinchRef}
       >
-        <NativeViewGestureHandler
-          ref={nativeViewRef}
-          simultaneousHandlers={pinchRef}
+        <ScrollView
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ref={scrollViewRef}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          onLayout={onScrollViewLayout}
+          scrollEnabled={!isPinching}
         >
-          <ScrollView
-            ref={scrollViewRef}
-            onScroll={onScroll}
-            scrollEventThrottle={16}
-            onLayout={onScrollViewLayout}
-            scrollEnabled={!isPinching}
+          <PinchGestureHandler
+            ref={pinchRef}
+            onGestureEvent={onPinchGestureEvent}
+            onHandlerStateChange={onPinchHandlerStateChange}
+            simultaneousHandlers={nativeViewRef}
           >
             <View style={[styles.timeline, { height: contentHeight }]}>
               <View style={styles.verticalLine} />
@@ -426,9 +436,9 @@ const VerticalTimeline: React.FC<VerticalTimelineProps> = ({
               />
               {renderEntries()}
             </View>
-          </ScrollView>
-        </NativeViewGestureHandler>
-      </PinchGestureHandler>
+          </PinchGestureHandler>
+        </ScrollView>
+      </NativeViewGestureHandler>
     </Container>
   );
 };

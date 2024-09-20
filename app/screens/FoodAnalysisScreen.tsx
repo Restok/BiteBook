@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { View, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { Entry } from "../types/entry";
 import FoodAnalysisContent from "../components/post/FoodAnalysisContent";
@@ -18,13 +18,29 @@ type FoodAnalysisScreenProps = {
 const FoodAnalysisScreen: React.FC<FoodAnalysisScreenProps> = ({ route }) => {
   const { entryData, index } = route.params;
   const { reloadSingleEntry } = useJournalContext();
-  //   useFocusEffect(() => {
-  //     reloadSingleEntry(entryData.id);
-  //   });
+  const [entry, setEntry] = React.useState<Entry | null>(entryData);
+  const refreshEntry = async () => {
+    const updatedEntry = await reloadSingleEntry(entryData.id);
+    if (updatedEntry) {
+      setEntry(updatedEntry);
+    }
+  };
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    refreshEntry().then(() => setRefreshing(false));
+  }, []);
 
   return (
     <View style={styles.container}>
-      <FoodAnalysisContent entryData={entryData} isOpen={false} />
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <FoodAnalysisContent entryData={entry} />
+      </ScrollView>
     </View>
   );
 };

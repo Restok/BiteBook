@@ -127,109 +127,107 @@ const FoodAnalysisContent: React.FC<FoodAnalysisContentProps> = ({
     // <LinearGradient
     //   colors={["#EBE4FF", "#C8EFFF"]} // Light blue gradient
     // >
-    <ScrollView>
-      <SafeAreaView>
-        <NavigationAction
-          icon={"arrow-back-outline"}
-          size="giant"
-          status="placeholder"
-          backgroundColor={Colors.transparent}
-          tintColor={Colors.grey20}
+    <SafeAreaView>
+      <NavigationAction
+        icon={"arrow-back-outline"}
+        size="giant"
+        status="placeholder"
+        backgroundColor={Colors.transparent}
+        tintColor={Colors.grey20}
+      />
+      <View style={styles.container}>
+        <UserIcon size={80} styles={styles.userIcon} />
+        {entryData.points != null && (
+          <View style={styles.starWrapper}>
+            <StarIcon color={Colors.yellow60} />
+            <View style={styles.pointsOverlay}>
+              <Text style={styles.pointsText}>{displayedScore}</Text>
+              <Text style={styles.pointsLabel}>points earned</Text>
+            </View>
+          </View>
+        )}
+
+        <Text style={styles.title}>{entryData.title}</Text>
+
+        <Carousel
+          data={entryData.images}
+          renderItem={renderCarouselItem}
+          width={300}
+          height={460}
+          panGestureHandlerProps={{
+            activeOffsetX: [-5, 5],
+          }}
+          mode="vertical-stack"
+          modeConfig={{
+            snapDirection: "left",
+            stackInterval: 30,
+          }}
+          style={styles.carousel}
         />
-        <View style={styles.container}>
-          <UserIcon size={80} styles={styles.userIcon} />
-          {entryData.points != null && (
-            <View style={styles.starWrapper}>
-              <StarIcon color={Colors.yellow60} />
-              <View style={styles.pointsOverlay}>
-                <Text style={styles.pointsText}>{displayedScore}</Text>
-                <Text style={styles.pointsLabel}>points earned</Text>
+
+        {entryData.overallScore != null ? (
+          <>
+            <View style={styles.healthScoreContainer}>
+              <Text style={styles.healthScoreLabel}>Health Score:</Text>
+              <View style={styles.healthScoreBar}>
+                <View
+                  style={[
+                    styles.healthScoreFill,
+                    { width: `${healthScorePercentage}%` },
+                  ]}
+                />
               </View>
             </View>
-          )}
 
-          <Text style={styles.title}>{entryData.title}</Text>
-
-          <Carousel
-            data={entryData.images}
-            renderItem={renderCarouselItem}
-            width={300}
-            height={460}
-            panGestureHandlerProps={{
-              activeOffsetX: [-5, 5],
-            }}
-            mode="vertical-stack"
-            modeConfig={{
-              snapDirection: "left",
-              stackInterval: 30,
-            }}
-            style={styles.carousel}
-          />
-
-          {entryData.overallScore != null ? (
-            <>
-              <View style={styles.healthScoreContainer}>
-                <Text style={styles.healthScoreLabel}>Health Score:</Text>
-                <View style={styles.healthScoreBar}>
-                  <View
-                    style={[
-                      styles.healthScoreFill,
-                      { width: `${healthScorePercentage}%` },
-                    ]}
-                  />
-                </View>
-              </View>
-
-              <View
+            <View
+              style={[
+                styles.infoCard,
+                selectedIngredient && {
+                  backgroundColor: getScoreColor(selectedIngredient.score),
+                },
+              ]}
+            >
+              <Text
                 style={[
-                  styles.infoCard,
-                  selectedIngredient && {
-                    backgroundColor: getScoreColor(selectedIngredient.score),
+                  styles.infoCardText,
+                  {
+                    color: selectedIngredient ? Colors.white : Colors.black,
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.infoCardText,
-                    {
-                      color: selectedIngredient ? Colors.white : Colors.black,
-                    },
-                  ]}
-                >
-                  {selectedIngredient
-                    ? `${selectedIngredient.emoji} ${selectedIngredient.reasoning}`
-                    : "Tap an item to see details"}
-                </Text>
-              </View>
-
-              <ScrollView
-                style={styles.ingredientsContainer}
-                contentContainerStyle={styles.ingredientsContentContainer}
-              >
-                {sortedNutritionAnalysis.map((ingredient, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.ingredientItem,
-                      { backgroundColor: getScoreColor(ingredient.score) },
-                    ]}
-                    onPress={() => setSelectedIngredient(ingredient)}
-                  >
-                    <Text style={styles.ingredientName}>
-                      {ingredient.emoji} {ingredient.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </>
-          ) : (
-            <View>
-              <Text>Still Analyzing! Check back later.</Text>
+                {selectedIngredient
+                  ? `${selectedIngredient.emoji} ${selectedIngredient.reasoning}`
+                  : "Tap an item to see details"}
+              </Text>
             </View>
-          )}
-        </View>
-      </SafeAreaView>
-    </ScrollView>
+
+            <ScrollView
+              style={styles.ingredientsContainer}
+              contentContainerStyle={styles.ingredientsContentContainer}
+            >
+              {sortedNutritionAnalysis.map((ingredient, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.ingredientItem,
+                    { backgroundColor: getScoreColor(ingredient.score) },
+                  ]}
+                  onPress={() => setSelectedIngredient(ingredient)}
+                >
+                  <Text style={styles.ingredientName}>
+                    {ingredient.emoji} {ingredient.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        ) : (
+          <View>
+            <Text>Still Analyzing! Check back later.</Text>
+          </View>
+        )}
+      </View>
+    </SafeAreaView>
     // {/* </LinearGradient> */}
   );
 };

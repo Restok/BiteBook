@@ -27,7 +27,7 @@ interface JournalContextType {
   entries: Entry[];
   loadEntriesForDate: (date: Date) => Promise<void>;
   isLoading: boolean;
-  reloadSingleEntry: (entryId: string) => Promise<void>;
+  reloadSingleEntry: (entryId: string) => Promise<Entry | null>;
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
   leaderboard: LeaderboardEntry[];
@@ -45,8 +45,8 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const reloadSingleEntry = useCallback(
-    async (entryId: string) => {
-      if (!selectedJournal) return;
+    async (entryId: string): Promise<Entry | null> => {
+      if (!selectedJournal) return null;
       try {
         setIsLoading(true);
         const updatedEntry = await loadSingleEntry(entryId, selectedJournal.id);
@@ -57,8 +57,10 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({
             )
           );
         }
+        return updatedEntry;
       } catch (error) {
         console.error("Error reloading entry:", error);
+        return null;
       } finally {
         setIsLoading(false);
       }
