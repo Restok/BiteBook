@@ -2,9 +2,11 @@ import React, { useState, useCallback, useEffect } from "react";
 import { View, StyleSheet, TouchableOpacity, Modal } from "react-native";
 import { Text, Button, Colors, Icon } from "react-native-ui-lib";
 import {
+  RouteProp,
   useFocusEffect,
   useIsFocused,
   useNavigation,
+  useRoute,
 } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useJournalContext } from "../contexts/JournalContext";
@@ -23,10 +25,12 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 
 import BottomSheet from "@gorhom/bottom-sheet";
+type HomeScreenRouteProp = RouteProp<RootStackParamList, "Home">;
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const isFocused = useIsFocused();
+  const route = useRoute<HomeScreenRouteProp>();
   const {
     selectedJournal,
     journals,
@@ -35,6 +39,7 @@ const HomeScreen: React.FC = () => {
     loadEntriesForDate,
     setSelectedDate,
     selectedDate,
+    setSelectedJournalById,
   } = useJournalContext();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -43,6 +48,12 @@ const HomeScreen: React.FC = () => {
   const bottomSheetRef = React.useRef<BottomSheet>(null);
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
+  useEffect(() => {
+    const journalId = route.params?.journalId;
+    if (journalId) {
+      setSelectedJournalById(journalId);
+    }
+  }, [route.params, setSelectedJournalById]);
   const handleDateChange = useCallback(
     (event: DateTimePickerEvent) => {
       setDatePickerVisible(false);

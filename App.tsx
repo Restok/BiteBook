@@ -1,5 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  NavigationContainer,
+  NavigationContainerRef,
+} from "@react-navigation/native";
 import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
 import LoginScreen from "./app/screens/LoginScreen";
@@ -39,6 +42,16 @@ import {
   OnboardingProvider,
   useOnboarding,
 } from "./app/contexts/OnboardingContext";
+import { setupNotifications } from "./app/services/setupNotifications";
+import messaging from "@react-native-firebase/messaging";
+import * as Notifications from "expo-notifications";
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 const Tab = createBottomTabNavigator();
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -79,37 +92,86 @@ const MainNavigator = () => (
 const App: React.FC = () => {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState(null);
-  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [theme, setTheme] = React.useState<"light" | "dark">("light");
+  const navigationRef =
+    useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   useEffect(() => {
+    if (!user) return;
+    const unsubscribers: (() => void)[] = [];
+    async function requestPermissions() {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== "granted") {
+        alert("Permission to receive notifications was denied");
+      }
+    }
+
+    requestPermissions();
+    const unSubscribeOnMessage = messaging().onMessage(
+      async (remoteMessage) => {
+        console.log(
+          "A new FCM message arrived!",
+          JSON.stringify(remoteMessage)
+        );
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: remoteMessage.notification?.title || "New post",
+            body: remoteMessage.notification?.body || "A new post has arrived",
+            data: remoteMessage.data,
+          },
+          trigger: { seconds: 1 },
+        });
+        // Here you can add custom logic to display the notification
+      }
+    );
+    unsubscribers.push(unSubscribeOnMessage);
+
+    messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+      console.log("Message handled in the background!", remoteMessage);
+    });
+    const unsubscribeOnNotificationOpenedApp =
+      messaging().onNotificationOpenedApp((remoteMessage) => {
+        console.log(
+          "Notification caused app to open from background state:",
+          remoteMessage.notification
+        );
+        if (remoteMessage.data && remoteMessage.data.journalId) {
+          navigationRef.current?.navigate("Home", {
+            journalId: remoteMessage.data.journalId as string,
+          });
+        }
+      });
+    unsubscribers.push(unsubscribeOnNotificationOpenedApp);
+
+    // Check for initial notification only once
+    messaging()
+      .getInitialNotification()
+      .then((remoteMessage) => {
+        if (remoteMessage) {
+          console.log(
+            "Notification caused app to open from quit state:",
+            remoteMessage.notification
+          );
+          if (remoteMessage.data && remoteMessage.data.journalId) {
+            navigationRef.current?.navigate("Home", {
+              journalId: remoteMessage.data.journalId as string,
+            });
+          }
+        }
+      });
+
+    return () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [user, navigationRef]);
+  useEffect(() => {
     configureGoogleSignIn();
+    setupNotifications();
 
     const subscriber = auth().onAuthStateChanged(async (user) => {
       setUser(user);
       if (user) {
-        try {
-          const userDoc = await firestore()
-            .collection("users")
-            .doc(user.uid)
-            .get();
-          if (userDoc.exists) {
-            const personalJournalDoc = await firestore()
-              .collection("journals")
-              .doc(user.uid)
-              .get();
-
-            setOnboardingComplete(personalJournalDoc.exists);
-          } else {
-            setOnboardingComplete(false);
-          }
-        } catch (error) {
-          if (error.code === "permission-denied") {
-            setOnboardingComplete(false);
-          }
-        }
-      } else {
-        setOnboardingComplete(false);
+        setupNotifications();
       }
       if (initializing) setInitializing(false);
     });
@@ -154,7 +216,9 @@ const App: React.FC = () => {
                 <OnboardingProvider>
                   <Confetti />
                   <LoadingScreen />
-                  <NavigationContainer>{<AppContent />}</NavigationContainer>
+                  <NavigationContainer ref={navigationRef}>
+                    {<AppContent />}
+                  </NavigationContainer>
                 </OnboardingProvider>
               </UserProvider>
             </JournalProvider>

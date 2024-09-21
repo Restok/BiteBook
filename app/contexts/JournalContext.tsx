@@ -32,6 +32,7 @@ interface JournalContextType {
   setSelectedDate: (date: Date) => void;
   leaderboard: LeaderboardEntry[];
   loadLeaderboard: (type: LeaderboardType, date?: Date) => Promise<void>;
+  setSelectedJournalById: (journalId: string) => Promise<void>;
 }
 
 const JournalContext = createContext<JournalContextType | undefined>(undefined);
@@ -93,6 +94,7 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(false);
     }
   }, []);
+
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   const loadLeaderboard = useCallback(
@@ -151,6 +153,15 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     []
   );
+  const setSelectedJournalById = useCallback(
+    async (journalId: string) => {
+      const journal = journals.find((j) => j.id === journalId);
+      if (journal) {
+        await handleSetSelectedJournal(journal);
+      }
+    },
+    [journals, handleSetSelectedJournal]
+  );
   return (
     <JournalContext.Provider
       value={{
@@ -166,6 +177,7 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({
         setSelectedDate,
         leaderboard,
         loadLeaderboard,
+        setSelectedJournalById,
       }}
     >
       {children}

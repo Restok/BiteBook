@@ -3,7 +3,7 @@ import { Journal } from "./journal";
 
 export type RootStackParamList = {
   Main: undefined;
-  Home: undefined;
+  Home: { journalId?: string };
   CreateJournal: undefined;
   ExpandBitebook: undefined;
   Login: undefined;

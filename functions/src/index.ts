@@ -9,6 +9,7 @@ const firestore = admin.firestore();
 const genAI = new GoogleGenerativeAI(functions.config().gemini.api_key);
 import * as moment from "moment-timezone";
 import * as stringSimilarity from "string-similarity";
+import { Message } from "firebase-admin/lib/messaging/messaging-api";
 
 export const processNewEntry = functions.firestore
   .document("entries/{entryId}")
@@ -16,6 +17,9 @@ export const processNewEntry = functions.firestore
     const entryData = snapshot.data();
     const entryId = context.params.entryId;
     const entryType = entryData.entryType as string;
+    sendNotificationsToJournalMembers(entryData).catch((error) => {
+      console.error("Error sending notifications:", error);
+    });
     if (entryType !== "meal" && entryType !== "snack") {
       return null;
     }
@@ -40,9 +44,58 @@ export const processNewEntry = functions.firestore
     } catch (error) {
       console.error("Error processing entry:", error);
     }
+
     return null; // Add this line
   });
 
+async function sendNotificationsToJournalMembers(entryData: any) {
+  const db = admin.firestore();
+  const userId = entryData.userId;
+  const journalIds: string[] = entryData.journals;
+
+  // Fetch user data for the person posting
+  const posterDoc = await db.collection("users").doc(userId).get();
+  const posterName = posterDoc.data()?.name || "Someone";
+
+  const notifiedUsers = new Set<string>();
+  const notifications: Message[] = [];
+
+  for (const journalId of journalIds) {
+    const journalDoc = await db.collection("journals").doc(journalId).get();
+    const journalData = journalDoc.data();
+
+    if (!journalData) continue;
+
+    const journalName = journalData.name;
+    const memberIds = journalData.members || [];
+
+    for (const memberId of memberIds) {
+      if (memberId === userId || notifiedUsers.has(memberId)) continue;
+      // if (notifiedUsers.has(memberId)) continue;
+
+      const memberDoc = await db.collection("users").doc(memberId).get();
+      const memberData = memberDoc.data();
+
+      if (memberData?.fcmToken) {
+        notifications.push({
+          notification: {
+            title: "New post",
+            body: `${posterName} added a new entry to ${journalName}!`,
+          },
+          data: {
+            journalId: journalId,
+          },
+          token: memberData.fcmToken,
+        });
+        notifiedUsers.add(memberId);
+      }
+    }
+  }
+
+  if (notifications.length > 0) {
+    await admin.messaging().sendEach(notifications);
+  }
+}
 async function calculatePoints(entryData: any): Promise<{
   score: number;
   points: number;
