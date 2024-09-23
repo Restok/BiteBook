@@ -15,6 +15,7 @@ import { RootStackParamList } from "../../types/navigation";
 import JournalSettingsModal from "./JournalSettingsModal";
 import auth from "@react-native-firebase/auth";
 import { useJournalContext } from "../../contexts/JournalContext";
+import { mui3Colors } from "../../styles/theme"; // Import the MUI 3 colors
 
 interface GroupPickerOverlayProps {
   visible: boolean;
@@ -155,6 +156,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginHorizontal: 20,
     borderRadius: 30,
+    backgroundColor: Colors.purple30,
   },
   plusIcon: {
     fontSize: 24,

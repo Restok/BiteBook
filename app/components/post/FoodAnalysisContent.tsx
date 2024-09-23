@@ -90,7 +90,7 @@ const FoodAnalysisContent: React.FC<FoodAnalysisContentProps> = ({
       height="100%"
       viewBox="0 0 50 50"
       preserveAspectRatio="xMidYMid meet"
-      rotation={isNaN(displayedScore) ? 0 : displayedScore * 3}
+      rotation={15}
     >
       <Path
         fill={color}
@@ -136,7 +136,11 @@ const FoodAnalysisContent: React.FC<FoodAnalysisContentProps> = ({
         tintColor={Colors.grey20}
       />
       <View style={styles.container}>
-        <UserIcon size={80} styles={styles.userIcon} />
+        <UserIcon
+          size={80}
+          styles={styles.userIcon}
+          userId={entryData.userId}
+        />
         {entryData.points != null && (
           <View style={styles.starWrapper}>
             <StarIcon color={Colors.yellow60} />

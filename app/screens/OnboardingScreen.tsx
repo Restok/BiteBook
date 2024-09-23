@@ -14,7 +14,9 @@ import storage from "@react-native-firebase/storage";
 import { createJournal } from "../services/createJournal";
 import { compressImage } from "../utils/compressImage";
 import * as Localization from "expo-localization"; // Add this import
+import se from "rn-emoji-keyboard";
 import { useOnboarding } from "../contexts/OnboardingContext";
+import { useLoading } from "../contexts/LoadingContext";
 
 const OnboardingScreen: React.FC = () => {
   const [name, setName] = useState("");
@@ -34,8 +36,9 @@ const OnboardingScreen: React.FC = () => {
       setProfilePicture(compressedImage);
     }
   };
-
+  const { isLoading, setIsLoading } = useLoading();
   const handleSubmit = async () => {
+    setIsLoading(true);
     const user = auth().currentUser;
     if (user) {
       let photoURL = "";
@@ -56,12 +59,13 @@ const OnboardingScreen: React.FC = () => {
       await user.updateProfile({ displayName: name, photoURL });
 
       try {
-        await createJournal(`Your Journal`, photoURL, true);
+        await createJournal(`Personal Journal`, profilePicture, true);
         setOnboardingComplete(true);
       } catch (error) {
         console.error("Failed to create personal journal:", error);
       }
     }
+    setIsLoading(false);
   };
 
   return (
@@ -69,12 +73,12 @@ const OnboardingScreen: React.FC = () => {
       <TouchableOpacity onPress={pickImage} style={styles.imageContainer}>
         {profilePicture ? (
           <Image
-            source={{ uri: profilePicture.uri }}
+            source={{ uri: profilePicture }}
             style={styles.profilePicture}
           />
         ) : (
           <View style={styles.placeholderImage}>
-            <Text>Profile picture</Text>
+            <Text>Upload Image</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -90,7 +94,7 @@ const OnboardingScreen: React.FC = () => {
       <Button
         label="Let's go!"
         onPress={handleSubmit}
-        disabled={!name || !profilePicture}
+        disabled={!name || !profilePicture || isLoading}
         style={styles.button}
       />
     </View>

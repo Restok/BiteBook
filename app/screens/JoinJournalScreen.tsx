@@ -8,6 +8,7 @@ import { joinJournal } from "../services/joinJournal";
 import { getBatchUsersByIds } from "../services/getBatchUsersByIds";
 import { User } from "../types/user";
 import { useLoading } from "../contexts/LoadingContext";
+import { useConfetti } from "../contexts/ConfettiContext";
 
 type JoinJournalScreenProps = {
   navigation: StackNavigationProp<RootStackParamList, "JoinJournal">;
@@ -21,13 +22,15 @@ const JoinJournalScreen: React.FC<JoinJournalScreenProps> = ({
   const { journal } = route.params;
   const { isLoading, setIsLoading } = useLoading();
   const [members, setMembers] = useState<User[]>([]);
+  const { triggerConfetti } = useConfetti();
 
   const handleJoin = async () => {
     setIsLoading(true);
     try {
       await joinJournal(journal.id);
       // Navigate to the journal or update the app state as needed
-      navigation.navigate("Home"); // Adjust this based on your navigation structure
+      navigation.navigate("Home", { journalId: journal.id });
+      triggerConfetti();
     } catch (error) {
       console.error("Error joining journal:", error);
       Alert.alert("Error", "Failed to join the journal. Please try again.");

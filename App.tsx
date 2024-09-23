@@ -53,6 +53,7 @@ Notifications.setNotificationHandler({
   }),
 });
 const Tab = createBottomTabNavigator();
+import "./app/styles/theme";
 
 const Stack = createStackNavigator<RootStackParamList>();
 const AuthStack = createStackNavigator<RootStackParamList>();

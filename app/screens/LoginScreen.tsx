@@ -7,17 +7,20 @@ import {
   statusCodes,
 } from "@react-native-google-signin/google-signin";
 import auth from "@react-native-firebase/auth";
+import { useLoading } from "../contexts/LoadingContext";
 
 const LoginScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
-
+  const { setIsLoading } = useLoading();
   const signIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
       await GoogleSignin.signOut();
+      setIsLoading(true);
       const { idToken } = await GoogleSignin.signIn();
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
       await auth().signInWithCredential(googleCredential);
+      setIsLoading(false);
     } catch (e) {
       if (e.code === statusCodes.SIGN_IN_CANCELLED) {
         setError("Sign in was cancelled");
@@ -28,6 +31,7 @@ const LoginScreen: React.FC = () => {
       } else {
         setError("An unknown error occurred. Please try again.");
       }
+      setIsLoading(false);
     }
   };
 

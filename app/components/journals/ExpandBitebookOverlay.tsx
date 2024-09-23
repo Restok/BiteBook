@@ -1,7 +1,7 @@
 import React from "react";
 import { View, StyleSheet, Modal, TouchableOpacity } from "react-native";
 import { Text, Colors, Button } from "react-native-ui-lib";
-
+import { mui3Colors } from "../../styles/theme";
 interface ExpandBitebookOverlayProps {
   onClose: () => void;
   onStartNewJournal: () => void;
@@ -18,19 +18,19 @@ const ExpandBitebookOverlay: React.FC<ExpandBitebookOverlayProps> = ({
       <TouchableOpacity style={styles.closeButton} onPress={onClose}>
         <Text style={styles.closeButtonText}>✕</Text>
       </TouchableOpacity>
-      <Text style={styles.title}>Expand your Bitebook</Text>
-      <Text style={styles.subtitle}>Join or create a new group journal</Text>
+      <Text style={styles.title}>Expand your Journals</Text>
+      <Text style={styles.subtitle}>Join or create a new group journal!</Text>
       <View style={styles.buttonContainer}>
         <Button
           label="Start a new journal"
           style={styles.button}
-          backgroundColor={Colors.purple50}
+          backgroundColor={Colors.purple30}
           onPress={onStartNewJournal}
         />
         <Button
           label="Join an existing journal"
           style={styles.button}
-          backgroundColor={Colors.purple30}
+          backgroundColor={Colors.green30}
           onPress={onJoinExistingJournal}
         />
       </View>

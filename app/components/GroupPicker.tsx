@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   pickerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.$iconPrimaryLight,
+    backgroundColor: Colors.green40,
     padding: 5,
     marginVertical: 15,
     borderRadius: 15,

@@ -21,6 +21,7 @@ import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../../types/navigation";
 import { useConfetti } from "../../contexts/ConfettiContext";
+import { Ionicons } from "@expo/vector-icons";
 
 interface CreatePostModalProps {
   visible: boolean;
@@ -44,12 +45,20 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const { isLoading, setIsLoading } = useLoading();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleImagePick = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 1,
-    });
+  const handleImagePick = async (source: "library" | "camera") => {
+    let result;
+    if (source === "library") {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 1,
+      });
+    } else {
+      result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 1,
+      });
+    }
 
     if (!result.canceled) {
       const compressedImages = await Promise.all(
@@ -173,16 +182,30 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 ))}
               </ScrollView>
             ) : (
-              <Text style={styles.hintText}>
-                Upload images for your entry...
-              </Text>
+              <Text style={styles.hintText}>Snap a pic or upload images!</Text>
             )}
-            <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={handleImagePick}
-            >
-              <Text style={styles.uploadButtonText}>↑</Text>
-            </TouchableOpacity>
+            <View style={styles.imageButtonsContainer}>
+              <TouchableOpacity
+                style={styles.imageButton}
+                onPress={() => handleImagePick("library")}
+              >
+                <Ionicons
+                  name="images-outline"
+                  size={24}
+                  color={Colors.white}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.imageButton}
+                onPress={() => handleImagePick("camera")}
+              >
+                <Ionicons
+                  name="camera-outline"
+                  size={24}
+                  color={Colors.white}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
           <Text style={styles.inputLabel}>Give it a title:</Text>
           <TextInput
@@ -271,17 +294,35 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     marginBottom: 20,
-    minHeight: 100,
+    minHeight: 130,
     justifyContent: "center", // Center content vertically
+    position: "relative", // Add this to allow absolute positioning of child elements
+  },
+  imagePreviewContainer: {
+    flexDirection: "row",
+    marginBottom: 40, // Add some bottom margin to prevent overlap with buttons
+  },
+  imageButtonsContainer: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    flexDirection: "row",
+  },
+  imageButton: {
+    backgroundColor: Colors.purple30,
+    borderRadius: 30,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 10, // Add some space between buttons
   },
   hintText: {
     textAlign: "center",
     color: Colors.grey30,
     fontSize: 16,
   },
-  imagePreviewContainer: {
-    flexDirection: "row",
-  },
+
   imagePreview: {
     width: 80,
     height: 80,

@@ -25,6 +25,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 
 import BottomSheet from "@gorhom/bottom-sheet";
+import { useLoading } from "../contexts/LoadingContext";
 type HomeScreenRouteProp = RouteProp<RootStackParamList, "Home">;
 
 const HomeScreen: React.FC = () => {
@@ -41,17 +42,20 @@ const HomeScreen: React.FC = () => {
     selectedDate,
     setSelectedJournalById,
   } = useJournalContext();
-
+  const { isLoading, setIsLoading } = useLoading();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isGroupPickerOverlayVisible, setGroupPickerOverlayVisible] =
     useState(false);
   const bottomSheetRef = React.useRef<BottomSheet>(null);
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [journalIdFromParams, setJournalIdFromParams] = useState<string | null>(
+    route.params?.journalId
+  );
   useEffect(() => {
-    const journalId = route.params?.journalId;
-    if (journalId) {
-      setSelectedJournalById(journalId);
+    if (journalIdFromParams) {
+      setSelectedJournalById(journalIdFromParams);
+      setJournalIdFromParams(null);
     }
   }, [route.params, setSelectedJournalById]);
   const handleDateChange = useCallback(
@@ -70,10 +74,16 @@ const HomeScreen: React.FC = () => {
 
   const handleLogout = useCallback(async () => {
     try {
+      setIsLoading(true);
       await auth().signOut();
+      setIsLoading(false);
+
       // The auth state listener in App.tsx will handle navigation
     } catch (error) {
+      setIsLoading(false);
       console.error("Error signing out: ", error);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
   useFocusEffect(
@@ -218,7 +228,7 @@ const HomeScreen: React.FC = () => {
         text40R
         label="+"
         size={Button.sizes.large}
-        backgroundColor={Colors.primary}
+        backgroundColor={Colors.purple30}
         style={styles.addButton}
         round
         onPress={handleAddPost}
