@@ -1,3 +1,4 @@
+import { and } from "@react-native-firebase/firestore";
 import "ts-node/register";
 
 export default {
@@ -28,6 +29,15 @@ export default {
             "node_modules/@expo-google-fonts/inter/Inter_900Black.ttf",
             "node_modules/@expo-google-fonts/inter/Inter_400Regular.ttf",
           ],
+        },
+      ],
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            useFrameworks: "static",
+          },
+          android: {},
         },
       ],
     ],
