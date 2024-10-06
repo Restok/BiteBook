@@ -23,6 +23,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const checkOnboardingStatus = async () => {
     setIsLoading(true);
+    console.log("Checking onboarding status");
     const user = auth().currentUser;
     if (user) {
       try {
@@ -41,6 +42,9 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       } catch (error) {
         if (error.code === "permission-denied") {
+          setOnboardingComplete(false);
+        } else {
+          console.error("Error checking onboarding status:", error);
           setOnboardingComplete(false);
         }
       }

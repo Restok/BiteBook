@@ -71,23 +71,33 @@ const OnboardingNavigator: React.FC = () => (
 );
 
 const MainNavigator = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="Home" component={HomeScreen} />
-    <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
-    <Stack.Screen name="UserStats" component={UserStatsScreen} />
-    <Stack.Screen name="JoinJournal" component={JoinJournalScreen} />
-    <Stack.Screen
-      name="HealthScoreExpanded"
-      component={HealthScoreExpandedScreen}
-    />
-    <Stack.Screen name="TopFoodsExpanded" component={TopFoodsExpandedScreen} />
-    <Stack.Screen name="EnterInviteCode" component={EnterInviteCodeScreen} />
-    <Stack.Screen name="CreateJournal" component={CreateJournalScreen} />
-    <Stack.Screen name="ExpandBitebook" component={ExpandBitebookScreen} />
-    <Stack.Screen name="ExpandedPost" component={ExpandedPostScreen} />
-    <Stack.Screen name="FoodAnalysis" component={FoodAnalysisScreen} />
-    <Stack.Screen name="JournalCreated" component={JournalCreatedScreen} />
-  </Stack.Navigator>
+  <JournalProvider>
+    <UserProvider>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
+        <Stack.Screen name="UserStats" component={UserStatsScreen} />
+        <Stack.Screen name="JoinJournal" component={JoinJournalScreen} />
+        <Stack.Screen
+          name="HealthScoreExpanded"
+          component={HealthScoreExpandedScreen}
+        />
+        <Stack.Screen
+          name="TopFoodsExpanded"
+          component={TopFoodsExpandedScreen}
+        />
+        <Stack.Screen
+          name="EnterInviteCode"
+          component={EnterInviteCodeScreen}
+        />
+        <Stack.Screen name="CreateJournal" component={CreateJournalScreen} />
+        <Stack.Screen name="ExpandBitebook" component={ExpandBitebookScreen} />
+        <Stack.Screen name="ExpandedPost" component={ExpandedPostScreen} />
+        <Stack.Screen name="FoodAnalysis" component={FoodAnalysisScreen} />
+        <Stack.Screen name="JournalCreated" component={JournalCreatedScreen} />
+      </Stack.Navigator>
+    </UserProvider>
+  </JournalProvider>
 );
 
 const App: React.FC = () => {
@@ -99,6 +109,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
+    console.log(user);
     const unsubscribers: (() => void)[] = [];
     async function requestPermissions() {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -168,7 +179,6 @@ const App: React.FC = () => {
   useEffect(() => {
     configureGoogleSignIn();
     setupNotifications();
-
     const subscriber = auth().onAuthStateChanged(async (user) => {
       setUser(user);
       if (user) {
@@ -185,12 +195,15 @@ const App: React.FC = () => {
   const AppContent = () => {
     const { onboardingComplete } = useOnboarding();
     const user = auth().currentUser;
-
+    console.log(onboardingComplete);
     if (onboardingComplete === null) {
+      console.log("Loading onboarding status");
       return null; // or return a loading component if you prefer
     }
 
     if (!user) {
+      console.log("Need to login");
+
       return <AuthNavigator />;
     }
     if (!onboardingComplete) {
@@ -212,17 +225,13 @@ const App: React.FC = () => {
       >
         <ConfettiProvider>
           <LoadingProvider>
-            <JournalProvider>
-              <UserProvider>
-                <OnboardingProvider>
-                  <Confetti />
-                  <LoadingScreen />
-                  <NavigationContainer ref={navigationRef}>
-                    {<AppContent />}
-                  </NavigationContainer>
-                </OnboardingProvider>
-              </UserProvider>
-            </JournalProvider>
+            <OnboardingProvider>
+              <Confetti />
+              <LoadingScreen />
+              <NavigationContainer ref={navigationRef}>
+                {<AppContent />}
+              </NavigationContainer>
+            </OnboardingProvider>
           </LoadingProvider>
         </ConfettiProvider>
       </ApplicationProvider>

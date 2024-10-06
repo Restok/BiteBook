@@ -1,5 +1,11 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, StyleSheet, TouchableOpacity, Modal } from "react-native";
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  StatusBar,
+} from "react-native";
 import { Text, Button, Colors, Icon } from "react-native-ui-lib";
 import {
   RouteProp,
@@ -155,6 +161,11 @@ const HomeScreen: React.FC = () => {
   }, [navigation]);
   return (
     <Container>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={Colors.white}
+        translucent={true}
+      />
       <View style={styles.listContainer}>
         <View style={styles.topBar}>
           <GroupPicker

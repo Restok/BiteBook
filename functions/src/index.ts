@@ -1,15 +1,18 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// import { GoogleGenerativeAI } from "@google/generative-ai";
+
 import axios from "axios";
 
 admin.initializeApp();
 const firestore = admin.firestore();
 
-const genAI = new GoogleGenerativeAI(functions.config().gemini.api_key);
+// const genAI = new GoogleGenerativeAI(functions.config().gemini.api_key);
 import * as moment from "moment-timezone";
 import * as stringSimilarity from "string-similarity";
 import { Message } from "firebase-admin/lib/messaging/messaging-api";
+import OpenAI from "openai";
 
 export const processNewEntry = functions.firestore
   .document("entries/{entryId}")
@@ -102,66 +105,93 @@ async function calculatePoints(entryData: any): Promise<{
   totalWeight: number;
   ingredients: Ingredient[];
 }> {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-pro-exp-0827",
-    generationConfig: {
-      temperature: 0,
-      maxOutputTokens: 1024,
-    },
+  const openai = new OpenAI({
+    apiKey: functions.config().openai.api_key,
   });
   const imageParts = await Promise.all(
     entryData.images.map(async (imageUrl: string) => {
       const response = await axios.get(imageUrl, {
         responseType: "arraybuffer",
       });
-      const base64Image = Buffer.from(response.data, "binary").toString(
-        "base64"
-      );
-      return {
-        inlineData: {
-          data: base64Image,
-          mimeType: "image/jpeg", // Adjust if needed based on the actual image type
-        },
-      };
+      return Buffer.from(response.data, "binary").toString("base64");
     })
   );
 
-  const prompt = `You are a nutrition analysis assistant in a food journal app. The user uploads images of food that they eat, and you are required to provide:
-  A break down of the ingredients in the image
-  for each ingredient, how many serving sizes they likely consumed, rounded to the nearest 0.5
-  for each ingredient, a score of red, yellow, orange, to green. Any natural ingredients, please list as green, any foods recognized to be generally beneficial and health, healthy fats, healthy proteins, healthy carbs, please list as green. Yellow foods are still generally okay, but they're processed, such as white rice, compared to brown rice which would be green. Orange is starting to be fairly heavily processed, nutritionally sparse, or just something recognized as you shouldn't eat very often. Red is just ultra processed, would hurt your body consumed in more than a tiny portion.
-  for each ingredient, also assign a weight of how much content it contributes to the overall meal. This is used to calculate the overall health score. The overall health score is scored as: sum of all ingredients(weight*health_score)/total weight. Each weight value should be 1-10. Enough for this ingredient to constitute its own meal would be 10, a bite or 2 would be a 1.
-  A category for each ingredient/food. Categories are: Fruit, Vegetable, Protein, Nuts and seeds, Legumes, Dairy, Grains, Noodles/Pasta, Dessert, Drinks, Snacks, and Other
+  const prompt = `You are a nutrition analysis assistant in a food journal app.  Users upload images of their food, and you will analyze them to provide the following information:
 
-  If listing the ingredients doesn't give an accurate reflection of the nutritional content, then replace ALL the ingredients in that dish with just the dish name, score, and serving size. Otherwise, respond ONLY with the ingredient and scores in this format. If you already name a dish, for example, cheeseburger, DO NOT then also include burger patty, buns, etc in the ingredient list:
+1. **Ingredient Breakdown:** Identify all visible ingredients in the image.  If the dish is too complicated to name by ingredient, simplify to the dish name itself. But prefer ingredient breakdown wherever possible, and meaningful.  **Do not list both a dish name AND its individual components.**  For example, if you identify "cheeseburger," do *not* also list "bun," "patty," "cheese," etc.
 
-  Make sure NOTHING GETS INCLUDED TWICE. Meaning no ingredient gets double dipped. If you include a dish, DO NOT then also include the ingredients of that dish.  Low sugar desserts might be yellow, higher sugar desserts would be orange. Sugary drinks would be red. Very processed snacks and junk food would be red, cleaner snacks would be yellow-orange, or even green.
-  If the way an ingredient is cooked, or prepared, influences your health score rating, please add the relevant adjective to the ingredient name.
+2. **Serving Size Estimation:**  For each ingredient/dish, estimate the number of servings consumed in the image, rounded to the nearest 0.5.
 
-Respond in this format. Do not say ANYTHING else:
-  ingredient name: a good representative emoji, score, number for serving size, category, weight, short 1-2 sentences for score rating, talking to the user in a fun light hearted tone. Answer with life and personality! In your reasoning, try not to mention what the actual score is.
-Each line should be  
-[string]: [emoji char], [string, red, yellow, orange, or green], [number], [string], [number], [string]
+3. **Health Score:** Rate each ingredient/dish with a color-coded health score: green, yellow, orange, or red.
+    * **Green:** Natural, whole foods; generally beneficial and healthy options like lean proteins, healthy fats, and healthy carbohydrates. Any foods that are nutrient dense and generally recognized to be good for you, please put it here! Of course, it may be difficult to distinguish certain variations of foods(e.g sweetened vs. unsweetened), but give the user the benefit of the doubt and make that suggestion/distinction in the reasoning rather than falsely penalizing.
+    * **Yellow:**  Foods to consume in moderation. May contain some less healthy ingredients or be slightly processed.
+    * **Orange:** Heavily processed, nutritionally sparse, or something to eat only occasionally.
+    * **Red:** Ultra-processed foods that may have negative health impacts if consumed regularly or in large portions.
 
-If you do not see food, or the pictures does not look like that about food, return nothing. If a dish looks like it has more than 10 ingredients, just simplify to the dish name. If you are not confident about the ingredients, just give a general dish name
+    **Important Note on Health Scores:** Evaluate based on the *quality* of the food, *not* on fat, sodium, or calorie content.  Healthy fats and naturally occurring sodium are beneficial.  Penalize ingredients based on excessive added sugar, preservatives, artificial flavors/colors, lack of nutritional value, etc.  Consider how the food is prepared (e.g., fried vs. baked) when assigning a score. Give the user the benefit of the doubt when you're not sure!
 
-As a hollistic nutritionist, you believe FAT is NOT BAD, Sodium is NOT BAD, calories are NOT BAD. NEVER penalize a food item due to sodium or fat. In fact, from healthy sources, they are GOOD. What is important is the QUALITY of the food and the nutritional value. You NEVER say FAT in your reasoning, you NEVER say SODIUM in your reasoning, you NEVER say calories. Concerning elements are excessive added sugar, preservatives, artificial flavoring and coloring, lack of nutrition, etc
+4. **Weight:** Assign a weight (1-10) to each ingredient/dish reflecting its caloric contribution to the meal.  Think of this as roughly the number of calories per 100.  So, 1 = ~100 calories, 5 = ~500 calories, 10 = ~1000+ calories.
 
-If you do not see food, or the pictures does not look like that about food, return nothing. If a dish looks like it has more than 10 ingredients, just simplify to the dish name. If you are not confident about the ingredients, just give a general dish name`;
-  const result = await model.generateContent([...imageParts, prompt]);
-  const response = await result.response;
-  const analysisText = response.text();
-  console.log("Analysis text:", analysisText);
-  const ingredients = parseIngredients(analysisText);
+5. **Category:** Assign each ingredient/dish to a category: Fruit, Vegetable, Protein, Nuts and seeds, Legumes, Dairy, Grains, Noodles/Pasta, Dessert, Drinks, Snacks, Other.
 
-  const { score, points, totalWeight } = calculateOverallScore(ingredients);
-  await firestore.collection("entries").doc(entryData.id).update({
-    nutritionAnalysis: ingredients,
-    overallScore: score,
-    points: points,
-  });
+6. **Emoji:**  Include an emoji that *visually looks like* the ingredient/dish.
 
-  return { score, points, totalWeight, ingredients };
+7. **Reasoning:** Provide a short, fun, and lighthearted 1-2 sentence explanation for the health score, directly addressing the user.  DO NOT MENTION "fat," "sodium," or "calories" in your reasoning.
+
+
+
+
+This is the ONLY thing you should say, include nothing else in your response:
+**Response Format:** 
+[Ingredient Name]: [Emoji], [Score: green, yellow, orange, or red], [Serving Size], [Category], [Weight], [Reasoning]
+
+
+Example:
+Broccoli: 🥦, green, 1, Vegetable, 2,  Steamed broccoli is a nutritional powerhouse!  Great choice for a healthy and delicious side.
+
+
+If no food is visible or the image isn't about food, say nothing.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            ...imageParts.map(
+              (base64Image) =>
+                ({
+                  type: "image_url",
+                  image_url: {
+                    url: `data:image/jpeg;base64,${base64Image}`,
+                  },
+                } as const)
+            ),
+          ],
+        },
+      ],
+      max_tokens: 1024,
+    });
+
+    const analysisText = response.choices[0]?.message?.content || "";
+    console.log("Analysis text:", analysisText);
+    const ingredients = parseIngredients(analysisText);
+
+    const { score, points, totalWeight } = calculateOverallScore(ingredients);
+    await firestore.collection("entries").doc(entryData.id).update({
+      nutritionAnalysis: ingredients,
+      overallScore: score,
+      points: points,
+    });
+
+    return { score, points, totalWeight, ingredients };
+  } catch (error) {
+    console.error("Error calling OpenAI API:", error);
+    throw error;
+  }
 }
 
 interface Ingredient {

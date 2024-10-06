@@ -8,6 +8,7 @@ import {
   Image,
   ScrollView,
   Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { Text, Colors, Button, Picker } from "react-native-ui-lib";
 import * as ImagePicker from "expo-image-picker";
@@ -17,11 +18,11 @@ import { createEntry } from "../../services/createEntry";
 import { Entry } from "../../types/entry";
 import { compressImage } from "../../utils/compressImage";
 import { useLoading } from "../../contexts/LoadingContext";
-import { useNavigation } from "@react-navigation/native";
-import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../../types/navigation";
 import { useConfetti } from "../../contexts/ConfettiContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigaation/stack";
 
 interface CreatePostModalProps {
   visible: boolean;
@@ -123,11 +124,14 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
       visible={visible}
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>✕</Text>
-        </TouchableOpacity>
-        <View style={styles.content}>
+      <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <Text style={styles.closeButtonText}>✕</Text>
+      </TouchableOpacity>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
+        <ScrollView style={styles.content}>
           <View style={styles.headerContainer}>
             <Text style={styles.title}>Log a new:</Text>
             <Picker
@@ -207,6 +211,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
               </TouchableOpacity>
             </View>
           </View>
+
           <Text style={styles.inputLabel}>Give it a title:</Text>
           <TextInput
             style={styles.input}
@@ -214,20 +219,21 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
             onChangeText={setTitle}
             placeholder="Enter title"
           />
-        </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-        <View style={styles.buttonContainer}>
-          <Button
-            label="Post"
-            style={styles.postButton}
-            backgroundColor={Colors.purple30}
-            onPress={handleSubmit}
-            disabled={
-              !title.trim() || images.length === 0 || isSubmitting || isLoading
-            }
-          />
-        </View>
+      <View style={styles.buttonContainer}>
+        <Button
+          label="Post"
+          style={styles.postButton}
+          backgroundColor={Colors.purple30}
+          onPress={handleSubmit}
+          disabled={
+            !title.trim() || images.length === 0 || isSubmitting || isLoading
+          }
+        />
       </View>
+
       <JournalSelectionModal
         visible={showJournalSelection}
         onClose={() => setShowJournalSelection(false)}
@@ -241,12 +247,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
-    justifyContent: "space-between",
+    // justifyContent: "space-between",
   },
   content: {
     flex: 1,
     paddingTop: 25,
     paddingHorizontal: 20,
+    height: "100%",
   },
   closeButton: {
     position: "absolute",

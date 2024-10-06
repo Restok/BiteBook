@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { View, FlatList, Dimensions } from "react-native";
+import { View, FlatList, Dimensions, StatusBar } from "react-native";
 import ExpandedPostOverlay from "../components/post/ExpandedPostOverlay";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useJournalContext } from "../contexts/JournalContext";
@@ -37,29 +37,36 @@ const ExpandedPostScreen: React.FC<ExpandedPostScreenProps> = ({
 
   return (
     <View style={{ flex: 1 }}>
-      <FlatList
-        ref={flatListRef}
-        data={entries}
-        renderItem={renderItem}
-        keyExtractor={(item, index) => index.toString()}
-        snapToInterval={height}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        showsVerticalScrollIndicator={false}
-        initialScrollIndex={initialIndex}
-        disableIntervalMomentum
-        getItemLayout={(_, index) => ({
-          length: height,
-          offset: height * index,
-          index,
-        })}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-        ListFooterComponent={
-          <View style={{ backgroundColor: Colors.black, height: 20 }}></View>
-        }
-        style={{ backgroundColor: Colors.black }}
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={Colors.black}
+        translucent={true}
       />
+      {entries.length > 0 && (
+        <FlatList
+          ref={flatListRef}
+          data={entries}
+          renderItem={renderItem}
+          keyExtractor={(item, index) => index.toString()}
+          snapToInterval={height}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          showsVerticalScrollIndicator={false}
+          initialScrollIndex={Math.min(initialIndex, entries.length - 1)}
+          disableIntervalMomentum
+          getItemLayout={(_, index) => ({
+            length: height,
+            offset: height * index,
+            index,
+          })}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+          ListFooterComponent={
+            <View style={{ backgroundColor: Colors.black, height: 20 }}></View>
+          }
+          style={{ backgroundColor: Colors.black }}
+        />
+      )}
     </View>
   );
 };
