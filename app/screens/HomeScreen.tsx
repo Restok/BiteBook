@@ -125,7 +125,6 @@ const HomeScreen: React.FC = () => {
   }, []);
 
   const handleSubmitPost = useCallback(() => {
-    loadEntriesForDate(new Date());
     setIsModalVisible(false);
   }, []);
   const handleSettingsPress = useCallback(() => {

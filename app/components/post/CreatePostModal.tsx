@@ -23,6 +23,7 @@ import { useConfetti } from "../../contexts/ConfettiContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigaation/stack";
+import { useJournalContext } from "../../contexts/JournalContext";
 
 interface CreatePostModalProps {
   visible: boolean;
@@ -45,7 +46,7 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const { triggerConfetti } = useConfetti();
   const { isLoading, setIsLoading } = useLoading();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const { loadEntriesForDate } = useJournalContext();
   const handleImagePick = async (source: "library" | "camera") => {
     let result;
     if (source === "library") {
@@ -96,6 +97,8 @@ const CreatePostModal: React.FC<CreatePostModalProps> = ({
         time,
         journals: selectedJournals,
       });
+      await loadEntriesForDate(new Date());
+
       onSubmit();
       setImages([]);
       setTitle("");

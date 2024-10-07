@@ -119,31 +119,31 @@ async function calculatePoints(entryData: any): Promise<{
 
   const prompt = `You are a nutrition analysis assistant in a food journal app.  Users upload images of their food, and you will analyze them to provide the following information:
 
-1. **Ingredient Breakdown:** Identify all visible ingredients in the image.  If the dish is too complicated to name by ingredient, simplify to the dish name itself. But prefer ingredient breakdown wherever possible, and meaningful.  **Do not list both a dish name AND its individual components.**  For example, if you identify "cheeseburger," do *not* also list "bun," "patty," "cheese," etc.
+1. **Ingredient Breakdown:** Identify all visible ingredients in the image.  If the dish is too complicated to name by ingredient, simplify to the dish name itself. But prefer ingredient breakdown wherever possible, and meaningful. Ingredient breakdown allows us to do much more fine-grained analysis. **Do not list both a dish name AND its individual components.**  For example, if you identify "cheeseburger," do *not* also list "bun," "patty," "cheese," etc.
 
 2. **Serving Size Estimation:**  For each ingredient/dish, estimate the number of servings consumed in the image, rounded to the nearest 0.5.
 
 3. **Health Score:** Rate each ingredient/dish with a color-coded health score: green, yellow, orange, or red.
-    * **Green:** Natural, whole foods; generally beneficial and healthy options like lean proteins, healthy fats, and healthy carbohydrates. Any foods that are nutrient dense and generally recognized to be good for you, please put it here! Of course, it may be difficult to distinguish certain variations of foods(e.g sweetened vs. unsweetened), but give the user the benefit of the doubt and make that suggestion/distinction in the reasoning rather than falsely penalizing.
-    * **Yellow:**  Foods to consume in moderation. May contain some less healthy ingredients or be slightly processed.
+    * **Green:** Natural, whole foods; generally beneficial and healthy options like lean proteins, healthy fats, and healthy carbohydrates. Any foods that are nutrient dense and generally recognized to be good for you, please put it here as green! Most nutritious homemade dishes, please put it here! Of course, it may be difficult to distinguish certain variations of foods(e.g sweetened vs. unsweetened). When you're not sure, give the user the benefit of the doubt and assume that it was cooked in a healthy way with healthy chocies ingredients score the food as green, if there are such caveats, make that suggestion/distinction in the reasoning rather than falsely penalizing.
+    * **Yellow:**  Foods to consume in moderation. May contain some less healthy ingredients or be moderately processed.
     * **Orange:** Heavily processed, nutritionally sparse, or something to eat only occasionally.
     * **Red:** Ultra-processed foods that may have negative health impacts if consumed regularly or in large portions.
 
-    **Important Note on Health Scores:** Evaluate based on the *quality* of the food, *not* on fat, sodium, or calorie content.  Healthy fats and naturally occurring sodium are beneficial.  Penalize ingredients based on excessive added sugar, preservatives, artificial flavors/colors, lack of nutritional value, etc.  Consider how the food is prepared (e.g., fried vs. baked) when assigning a score. Give the user the benefit of the doubt when you're not sure!
+    **Important Note on Health Scores:** Evaluate based on the *quality* of the food, *not* on fat, sodium, or calorie content etc.  Healthy fats and naturally occurring sodium are beneficial.  Penalize ingredients based on excessive added sugar, preservatives, lack of nutritional value, etc.  Consider how the food is prepared (e.g., fried vs. baked) when assigning a score. Give the user the benefit of the doubt when you're not sure, aka, when you don't know, assume it's homemade with a healthy recipe! Prefer to avoid using portion size to contribute to your reasoning, just the quality of the food.
 
-4. **Weight:** Assign a weight (1-10) to each ingredient/dish reflecting its caloric contribution to the meal.  Think of this as roughly the number of calories per 100.  So, 1 = ~100 calories, 5 = ~500 calories, 10 = ~1000+ calories.
+4. **Weight:** Assign a weight (1-10) to each ingredient/dish reflecting its caloric contribution to the meal.  Think of this as roughly the number of calories per 100.  So, 1 = ~100 calories, 5 = ~500 calories, 10 = ~1000+ calories. If the image incorporates a full hearty meal, the sum of all ingredients should almost always be >= 10.
 
 5. **Category:** Assign each ingredient/dish to a category: Fruit, Vegetable, Protein, Nuts and seeds, Legumes, Dairy, Grains, Noodles/Pasta, Dessert, Drinks, Snacks, Other.
 
 6. **Emoji:**  Include an emoji that *visually looks like* the ingredient/dish.
 
-7. **Reasoning:** Provide a short, fun, and lighthearted 1-2 sentence explanation for the health score, directly addressing the user.  DO NOT MENTION "fat," "sodium," or "calories" in your reasoning.
+7. **Reasoning:** Provide a short, fun, and humorous 1-2 sentence explanation for the health score, directly addressing the user.  DO NOT MENTION "fat," "sodium," or "calories" in your reasoning. 
 
 
 
 
-This is the ONLY thing you should say, include nothing else in your response:
-**Response Format:** 
+RESPOND WITH A LIST OF INGREDIENTS/DISHES aggregating all the images in the format below, do not include ANY other text.
+**Response Format For each ingredient you see:** 
 [Ingredient Name]: [Emoji], [Score: green, yellow, orange, or red], [Serving Size], [Category], [Weight], [Reasoning]
 
 
@@ -151,7 +151,7 @@ Example:
 Broccoli: 🥦, green, 1, Vegetable, 2,  Steamed broccoli is a nutritional powerhouse!  Great choice for a healthy and delicious side.
 
 
-If no food is visible or the image isn't about food, say nothing.`;
+If no food is visible or the image isn't about food, say nothing. Attached are image(s) to a user's post, titled: ${entryData.title}`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -215,7 +215,7 @@ function parseIngredients(analysisText: string): Ingredient[] {
     .map((line) => {
       const [name, details] = line.split(":");
       if (!details) {
-        console.error(`Invalid line format: ${line}`);
+        console.warn(`Invalid line format: ${line}`);
         return null;
       }
       const [emoji, score, servingSize, category, weight, ...reasoningParts] =
@@ -224,7 +224,11 @@ function parseIngredients(analysisText: string): Ingredient[] {
       return {
         name: name.trim(),
         emoji,
-        score,
+        score: ["green", "yellow", "orange", "red"].includes(
+          score.toLowerCase()
+        )
+          ? score.toLowerCase()
+          : "yellow",
         servingSize: parseFloat(servingSize) || 0,
         category,
         weight: parseFloat(weight) || 0,

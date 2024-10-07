@@ -45,6 +45,7 @@ export default {
       supportsTablet: true,
       bundleIdentifier: "com.pookie.loveyumdiary",
       googleServicesFile: "./GoogleService-Info.plist",
+      buildNumber: "2",
     },
     android: {
       adaptiveIcon: {
